@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Week 1 Starter — Canvas &amp; Clear Color</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="gl-canvas"></canvas>
+    <script>
+      const canvas = document.getElementById("gl-canvas");
+      const gl = canvas.getContext("webgl2");
+
+      let start = performance.now(); //number representing the time when the current 1 second interval started, initalized to the timestamp of when the page loads
+
+      //Object to hold colors in order, keys have to be integers
+      const colors = {
+        1: { r: 1.0, g: 0.0, b: 0.0, a: 1.0 }, //Red
+        2: { r: 0.1, g: 1.0, b: 0.0, a: 1.0 }, //Green
+        3: { r: 0.0, g: 0.0, b: 1.0, a: 1.0 }, //Blue
+      };
+
+      let currentColorIndex = 1; //number representing the default/initial color
+      let nextColorIndex =
+        currentColorIndex < Object.keys(colors).length
+          ? currentColorIndex + 1
+          : 1; //number representing the index of the next color in the chain of
+      let currentColor = { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }; //object representing the currentColor
+
+      if (!gl) {
+        throw new Error("WebGL2 is not available on this device/browser.");
+      }
+
+      function resizeCanvasToDisplaySize() {
+        const dpr = window.devicePixelRatio || 1;
+        const width = Math.round(canvas.clientWidth * dpr);
+        const height = Math.round(canvas.clientHeight * dpr);
+        if (canvas.width !== width || canvas.height !== height) {
+          canvas.width = width;
+          canvas.height = height;
+        }
+      }
+
+      function render() {
+        resizeCanvasToDisplaySize();
+        gl.viewport(0, 0, canvas.width, canvas.height);
+
+        // TODO(student): try changing these values
+        c = currentColor; //shorthand variable for current color object
+        gl.clearColor(c.r, c.g, c.b, c.a);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+      }
+
+      //helper function for interpolating between two numbers
+      function linearInterpolation(start, end, percent) {
+        return start + (end - start) * percent;
+      }
+
+      //function to interpolate between the current color and the next based off of the time between colors switching
+      function interpolateCurrentColor(dt) {
+        const percentageElapsed = Math.max(0, Math.min(dt / 1000));
+        startColor = colors[currentColorIndex];
+        endColor = colors[nextColorIndex];
+        currentColor.r = linearInterpolation(
+          startColor.r,
+          endColor.r,
+          percentageElapsed,
+        ); //Interpolate Red
+        currentColor.g = linearInterpolation(
+          startColor.g,
+          endColor.g,
+          percentageElapsed,
+        ); //Interpolate Green
+        currentColor.b = linearInterpolation(
+          startColor.b,
+          endColor.b,
+          percentageElapsed,
+        ); //Interpolate Blue
+        currentColor.a = linearInterpolation(
+          startColor.a,
+          endColor.a,
+          percentageElapsed,
+        ); //Interpolate Alpha
+      }
+
+      function update(timestamp) {
+        const dt = timestamp - start;
+        interpolateCurrentColor(dt);
+        render();
+
+        if (dt > 1000) {
+          if (currentColorIndex < Object.keys(colors).length) {
+            //If not at final color in object, loop to the next color object
+            currentColorIndex++;
+          } else {
+            //Else, return to the first color object
+            currentColorIndex = 1;
+          }
+          nextColorIndex =
+            currentColorIndex < Object.keys(colors).length
+              ? currentColorIndex + 1
+              : 1;
+          //console.log("1 second");
+          start = timestamp;
+        }
+
+        requestAnimationFrame(update);
+      }
+
+      window.addEventListener("resize", render);
+      render(); //initial call
+      update();
+    </script>
+  </body>
+</html>
