@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Week 2 Starter -- Draw a Point</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="gl-canvas"></canvas>
+    <script>
+      const canvas = document.getElementById("gl-canvas");
+      const gl = canvas.getContext("webgl2");
+      if (!gl) {
+        throw new Error("WebGL2 is not available on this device/browser.");
+      }
+
+      //referenced https://observablehq.com/@jozanza/webgl2-drawing-points
+      //for drawing multiple vertices, mainly the gl_VertexID value
+
+      const vertexSource = `#version 300 es
+      void main() {
+        float num = float(gl_VertexID);           // value/ID of the current vertex being rendered
+
+        float x = -0.5 + (num / 1.0);             // using the vertex ID to dynamically generate coordinates for the points
+        float y = -0.5 + (num / 1.0);             // only draws visible/onscreen points for the first 2
+        gl_Position = vec4(x, y, 0.0, 1.0);       // TODO(student): move me
+        gl_PointSize = 80.0;                      // TODO(student): resize me
+      }`;
+
+      const fragmentSource = `#version 300 es
+      precision mediump float;
+      out vec4 outColor;
+      void main() {
+        outColor = vec4(0.0, 0.0, 1, 1.0);        // TODO(student): recolor me
+      }`;
+
+      function createShader(gl, type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          const log = gl.getShaderInfoLog(shader);
+          gl.deleteShader(shader);
+          throw new Error("Shader failed to compile: " + log);
+        }
+        return shader;
+      }
+
+      function createProgram(gl, vsSource, fsSource) {
+        const program = gl.createProgram();
+        gl.attachShader(program, createShader(gl, gl.VERTEX_SHADER, vsSource));
+        gl.attachShader(
+          program,
+          createShader(gl, gl.FRAGMENT_SHADER, fsSource),
+        );
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          throw new Error(
+            "Program failed to link: " + gl.getProgramInfoLog(program),
+          );
+        }
+        return program;
+      }
+
+      const program = createProgram(gl, vertexSource, fragmentSource);
+
+      function render() {
+        const dpr = window.devicePixelRatio || 1;
+        const w = Math.round(canvas.clientWidth * dpr);
+        const h = Math.round(canvas.clientHeight * dpr);
+        if (canvas.width !== w || canvas.height !== h) {
+          canvas.width = w;
+          canvas.height = h;
+        }
+
+        gl.viewport(0, 0, canvas.width, canvas.height);
+
+        gl.useProgram(program);
+        gl.clearColor(0.1, 0.1, 0.1, 1.0); //Changed this
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.POINTS, 0, 2); //Last parameter draws 2 points
+      }
+
+      window.addEventListener("resize", render);
+      render();
+    </script>
+  </body>
+</html>
