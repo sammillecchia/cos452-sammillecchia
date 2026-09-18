@@ -5,4 +5,6 @@ repository for USM's COS452 - Computer graphics
 
 [Week 02](https://sammillecchia.github.io/cos452-sammillecchia/week02/)
 
-[Week 03](https://sammillecchia.github.io/cos452-sammillecchia/week02/) (uncommitted)
+[Week 03](https://sammillecchia.github.io/cos452-sammillecchia/week03/) 
+
+[Week 04](https://sammillecchia.github.io/cos452-sammillecchia/week04/) (uncommitted)
