@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Week 8 Starter -- Cube & Depth Testing</title>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #111;
+        }
+
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="gl-canvas"></canvas>
+    <script>
+        const canvas = document.getElementById("gl-canvas");
+        const gl = canvas.getContext("webgl2");
+        if (!gl) {
+            throw new Error("WebGL2 is not available on this device/browser.");
+        }
+
+        const vertexSource = `#version 300 es
+            in vec2 a_position;
+            in vec2 a_uv;
+            out vec2 v_uv;
+            void main() {
+            gl_Position = vec4(a_position, 0.0, 1.0);
+            v_uv = a_uv;
+        }`;
+
+        //referencing the logic from this repo https://github.com/clems4ever/demo-gameoflife-webgl/blob/main/src/components/GameOfLifeCanvas/simulation/fragment.glsl
+        const simulationFragmentSource = `#version 300 es
+        precision mediump float;
+        in vec2 v_uv;
+ 
+        uniform sampler2D u_state;
+        uniform ivec2 u_gridSize;
+
+        out vec4 outColor;
+
+        void main() {
+            ivec2 coord = ivec2(gl_FragCoord.xy);
+
+            float nn_neighbor = texelFetch(u_state, coord + ivec2(-1, -1), 0).r;
+            float nz_neighbor = texelFetch(u_state, coord + ivec2(-1,  0), 0).r;
+            float np_neighbor = texelFetch(u_state, coord + ivec2(-1,  1), 0).r;
+            float zn_neighbor = texelFetch(u_state, coord + ivec2( 0, -1), 0).r;
+            float zp_neighbor = texelFetch(u_state, coord + ivec2( 0,  1), 0).r;
+            float pn_neighbor = texelFetch(u_state, coord + ivec2( 1, -1), 0).r;
+            float pz_neighbor = texelFetch(u_state, coord + ivec2( 1,  0), 0).r;
+            float pp_neighbor = texelFetch(u_state, coord + ivec2( 1,  1), 0).r;
+
+            float sum = np_neighbor + zp_neighbor + pp_neighbor +
+                        nz_neighbor +               pz_neighbor +
+                        nn_neighbor + zn_neighbor + pn_neighbor;
+
+            int liveNeighbors = int(sum + 0.5);
+
+            float currentState = texelFetch(u_state, coord, 0).r;
+            bool isAlive = currentState > 0.5;
+
+            float nextState = 0.0;
+
+            if (isAlive && (liveNeighbors == 2 || liveNeighbors == 3)) {
+                nextState = 1.0;
+            } else if (liveNeighbors == 3){
+                nextState = 1.0;
+            }
+
+            outColor = vec4(vec3(nextState), 1.0);
+        }`;
+
+        const displayFragmentSource = `#version 300 es
+        precision mediump float;
+        in vec2 v_uv;
+        uniform sampler2D u_texture;
+        out vec4 outColor;
+        void main() {
+            float cell = texture(u_texture, v_uv).r;
+            float color = cell < 0.5 ? 0.0 : 0.933;
+            outColor = vec4(vec3(color), 1.0);
+        } `
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                const log = gl.getShaderInfoLog(shader);
+                gl.deleteShader(shader);
+                throw new Error("Shader failed to compile: " + log);
+            }
+            return shader;
+        }
+
+        function createProgram(gl, vsSource, fsSource) {
+            const program = gl.createProgram();
+            gl.attachShader(program, createShader(gl, gl.VERTEX_SHADER, vsSource));
+            gl.attachShader(
+                program,
+                createShader(gl, gl.FRAGMENT_SHADER, fsSource),
+            );
+            gl.linkProgram(program);
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                throw new Error(
+                    "Program failed to link: " + gl.getProgramInfoLog(program),
+                );
+            }
+            return program;
+        }
+
+        const displayProgram = createProgram(gl, vertexSource, displayFragmentSource);
+        const simulationProgram  = createProgram(gl, vertexSource, simulationFragmentSource);
+
+        const data = new Float32Array([
+            -1.0, -1.0, 0.0, 0.0,
+            1.0, -1.0, 1.0, 0.0,
+            1.0, 1.0, 1.0, 1.0,
+            -1.0, -1.0, 0.0, 0.0,
+            1.0, 1.0, 1.0, 1.0,
+            -1.0, 1.0, 0.0, 1.0
+        ]);
+
+        const GRID_HEIGHT = 256;
+        const GRID_WIDTH = 256;
+
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+
+        const F = Float32Array.BYTES_PER_ELEMENT
+        const stride = 4 * F;
+
+        //Display VAO
+        const displayVAO = gl.createVertexArray()
+        gl.bindVertexArray(displayVAO);
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+
+        const aDisplayPos = gl.getAttribLocation(displayProgram, "a_position");
+        gl.enableVertexAttribArray(aDisplayPos);
+        gl.vertexAttribPointer(aDisplayPos, 2, gl.FLOAT, false, stride, 0);
+
+        const aDisplayUV = gl.getAttribLocation(displayProgram, "a_uv");
+        gl.enableVertexAttribArray(aDisplayUV);
+        gl.vertexAttribPointer(aDisplayUV, 2, gl.FLOAT, false, stride, 2 * F);
+     
+        //Simulation VAOs
+        const simulationVAO = gl.createVertexArray();
+        gl.bindVertexArray(simulationVAO);
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+
+        const aSimulationPosition = gl.getAttribLocation(simulationProgram, "a_position");
+        gl.enableVertexAttribArray(aSimulationPosition);
+        gl.vertexAttribPointer(aSimulationPosition, 2, gl.FLOAT, false, stride, 0);
+        gl.bindVertexArray(null);
+
+        const uTexture = gl.getUniformLocation(displayProgram, "u_texture");
+        const uGridSize = gl.getUniformLocation(simulationProgram, "u_gridSize");
+        const uState = gl.getUniformLocation(simulationProgram, "u_state");
+
+        gl.useProgram(simulationProgram);
+        gl.uniform2i(uGridSize, GRID_WIDTH, GRID_HEIGHT);
+
+        const initialState = new Uint8Array(GRID_HEIGHT * GRID_WIDTH);
+
+        for (let i = 0; i < initialState.length; i++) {
+            initialState[i] = Math.random() < 0.10 ? 255 : 0;
+        }
+
+        function setupTextureAndFrameBuffer(data = null) {
+            const texture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+
+            gl.texImage2D(
+                gl.TEXTURE_2D,
+                0,
+                gl.R8,
+                GRID_WIDTH,
+                GRID_HEIGHT,
+                0,
+                gl.RED,
+                gl.UNSIGNED_BYTE,
+                data
+            );
+
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+            const framebuffer = gl.createFramebuffer();
+            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+
+            gl.framebufferTexture2D(
+                gl.FRAMEBUFFER,
+                gl.COLOR_ATTACHMENT0,
+                gl.TEXTURE_2D,
+                texture, 
+                0
+            )
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl.bindTexture(gl.TEXTURE_2D, null);
+
+            return { texture, framebuffer};
+        }
+
+
+
+        let currentState = setupTextureAndFrameBuffer(initialState);
+        let nextState = setupTextureAndFrameBuffer();
+
+        const VERTEX_COUNT = 6;
+
+        const FPS = 12;
+        const FRAME_LENGTH = 1000 / FPS;
+        let lastTime = performance.now();
+
+        function render(now = performance.now()) {        
+            if (now > FRAME_LENGTH + lastTime) {
+            //simulation
+            gl.bindFramebuffer(gl.FRAMEBUFFER, nextState.framebuffer);
+            gl.viewport(0, 0, GRID_WIDTH, GRID_HEIGHT);
+
+            gl.useProgram(simulationProgram);
+            gl.bindVertexArray(simulationVAO);
+
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, currentState.texture);
+            gl.uniform1i(uState, 0);
+
+            gl.drawArrays(gl.TRIANGLES, 0, VERTEX_COUNT);
+
+            const dpr = window.devicePixelRatio || 1;
+            const maxWindowDim = Math.min(window.innerWidth, window.innerHeight);
+
+            // Compute integer multiple scaling clamped to safe GPU memory bounds
+            const rawScale = Math.floor((maxWindowDim * dpr) / GRID_WIDTH);
+            const maxSafeScale = Math.floor(window.innerWidth / GRID_WIDTH / 2);
+            const scale = Math.max(1, rawScale, maxSafeScale);
+
+            const canvasScale = scale * GRID_WIDTH;
+            const cssScale = canvasScale / dpr;
+
+            // Sync physical backing buffer and CSS box size simultaneously
+            if (canvas.width !== canvasScale || canvas.height !== canvasScale) {
+                canvas.width = canvasScale;
+                canvas.height = canvasScale;
+                canvas.style.width = `${cssScale}px`;
+                canvas.style.height = `${cssScale}px`;
+            }
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl.viewport(0, 0, canvas.width, canvas.height);
+
+            gl.useProgram(displayProgram);
+            gl.bindVertexArray(displayVAO);
+
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, nextState.texture);
+            gl.uniform1i(uTexture, 0);
+
+            gl.clearColor(0.933, 0.933, 0.933, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            gl.drawArrays(gl.TRIANGLES, 0, VERTEX_COUNT);
+
+            const temp = currentState;
+            currentState = nextState;
+            nextState = temp;
+            lastTime = now;
+            }
+            requestAnimationFrame(render);
+        }
+
+        render();
+    </script>
+</body>
+
+</html>
