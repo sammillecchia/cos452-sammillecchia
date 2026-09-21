@@ -31,7 +31,10 @@
       const vertexSource = `#version 300 es
       void main() {
         float num = float(gl_VertexID);           // value/ID of the current vertex being rendered
-        gl_Position = vec4(0.5, 0.5, 0.0, 1.0);       // TODO(student): move me
+
+        float x = -0.5 + (num / 1.0);             // using the vertex ID to dynamically generate coordinates for the points
+        float y = -0.5 + (num / 1.0);             // only draws visible/onscreen points for the first 2
+        gl_Position = vec4(x, y, 0.0, 1.0);       // TODO(student): move me
         gl_PointSize = 80.0;                      // TODO(student): resize me
       }`;
 
@@ -86,7 +89,7 @@
         gl.useProgram(program);
         gl.clearColor(0.1, 0.1, 0.1, 1.0); //Changed this
         gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.drawArrays(gl.POINTS, 0, 1); //Last parameter draws 2 points
+        gl.drawArrays(gl.POINTS, 0, 2); //Last parameter draws 2 points
       }
 
       window.addEventListener("resize", render);
