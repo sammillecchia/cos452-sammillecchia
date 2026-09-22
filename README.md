@@ -20,4 +20,4 @@ Labs:
 
 Extras:
 
-[2D Game of Life](https://sammillecchia.github.io/cos452-sammillecchia/exercises/2dGOL.html) 
+[2D Game of Life](https://sammillecchia.github.io/cos452-sammillecchia/extras/2dGOL.html) 
