@@ -13,7 +13,9 @@ Labs:
 
 [Week 03](https://sammillecchia.github.io/cos452-sammillecchia/week03/) | [Week 03 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week03/stretch.html)
 
-[Week 04](https://sammillecchia.github.io/cos452-sammillecchia/week04/) (uncommitted)
+[Week 04](https://sammillecchia.github.io/cos452-sammillecchia/week04/) | [Week 04 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week04/stretch.html)
+
+(uncommited -> ) [Week 05](https://sammillecchia.github.io/cos452-sammillecchia/week05/) | [Week 05 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week05/stretch.html)
 
 
 Extras:

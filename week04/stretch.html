@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Week 4 Starter -- Attributes & Uniforms</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    canvas { width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="gl-canvas"></canvas>
+  <script>
+    const canvas = document.getElementById("gl-canvas");
+    const gl = canvas.getContext("webgl2");
+    if (!gl) {
+      throw new Error("WebGL2 is not available on this device/browser.");
+    }
+
+    const vertexSource = `#version 300 es
+      in vec2 a_position;
+      in vec3 a_color;
+      out vec3 v_color;
+      void main() {
+        gl_Position = vec4(a_position, 0.0, 1.0);
+        v_color = a_color;
+      }`;
+
+    const fragmentSource = `#version 300 es
+      precision mediump float;
+      in vec3 v_color;
+      uniform float u_brightness;
+      out vec4 outColor;
+      void main() {
+        outColor = vec4(v_color * u_brightness, 1.0);
+      }`;
+
+    function createShader(gl, type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        const log = gl.getShaderInfoLog(shader);
+        gl.deleteShader(shader);
+        throw new Error("Shader failed to compile: " + log);
+      }
+      return shader;
+    }
+
+    function createProgram(gl, vsSource, fsSource) {
+      const program = gl.createProgram();
+      gl.attachShader(program, createShader(gl, gl.VERTEX_SHADER, vsSource));
+      gl.attachShader(program, createShader(gl, gl.FRAGMENT_SHADER, fsSource));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        throw new Error("Program failed to link: " + gl.getProgramInfoLog(program));
+      }
+      return program;
+    }
+
+    const program = createProgram(gl, vertexSource, fragmentSource);
+
+    const positions = new Float32Array([
+       0.0,  0.8,
+      -0.8, -0.5,
+       0.5, -0.8,
+    ]);
+    const positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+
+    // TODO(student): change these corner colors
+    const colors = new Float32Array([
+      1.0, 0.0, 1.0,   // top
+      0.0, 1.0, 1.0,   // bottom-left
+      1.0, 1.0, 0.0,   // bottom-right
+    ]);
+    const colorBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+
+    const aPosition = gl.getAttribLocation(program, "a_position");
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.enableVertexAttribArray(aPosition);
+    gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
+
+    const aColor = gl.getAttribLocation(program, "a_color");
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    gl.enableVertexAttribArray(aColor);
+    gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 0, 0);
+
+    const uBrightness = gl.getUniformLocation(program, "u_brightness");
+
+    function render(time = performance.now()) {
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.round(canvas.clientWidth * dpr);
+      const h = Math.round(canvas.clientHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      gl.viewport(0, 0, canvas.width, canvas.height);
+
+      gl.useProgram(program);
+      const uBrightnessValue = 1.0 + Math.sin(time * 0.0005); //Brightness > 1.0 has a pretty cool effect
+      gl.uniform1f(uBrightness, uBrightnessValue);
+
+      gl.clearColor(0.10, 0.10, 0.10, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      
+      requestAnimationFrame(render);
+    }
+
+    window.addEventListener("resize", render);
+    render();
+  </script>
+</body>
+</html>
