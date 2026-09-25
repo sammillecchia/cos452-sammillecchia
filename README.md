@@ -3,6 +3,8 @@ repository for USM's COS452 - Computer graphics
 
 Repo Link:
 [github.com/sammillecchia/cos452-sammillecchia](https://github.com/sammillecchia/cos452-sammillecchia)
+
+Pages Link:
 [sammillecchia.github.io/cos452-sammillecchia](https://https://sammillecchia.github.io/cos452-sammillecchia/)
 
 Labs:
@@ -15,7 +17,9 @@ Labs:
 
 [Week 04](https://sammillecchia.github.io/cos452-sammillecchia/week04/) | [Week 04 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week04/stretch.html)
 
-(uncommited -> ) [Week 05](https://sammillecchia.github.io/cos452-sammillecchia/week05/) | [Week 05 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week05/stretch.html)
+(Uncommited Below)
+
+[Week 05](https://sammillecchia.github.io/cos452-sammillecchia/week05/) | [Week 05 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week05/stretch.html)
 
 
 Extras:
