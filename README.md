@@ -21,4 +21,5 @@ Labs:
 Extras:
 
 [2D Game of Life](https://sammillecchia.github.io/cos452-sammillecchia/extras/2dGOL.html) 
-[ImageGOL](https://sammillecchia.github.io/cos452-sammillecchia/extras/imageGOL.html) 
+
+[Image2GOL](https://sammillecchia.github.io/cos452-sammillecchia/extras/image2GOL.html) 
