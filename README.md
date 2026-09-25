@@ -2,8 +2,8 @@
 repository for USM's COS452 - Computer graphics
 
 Repo Link:
-
-[sammillecchia.github.io/cos452-sammillecchia](https://sammillecchia.github.io/cos452-sammillecchia/)
+[github.com/sammillecchia/cos452-sammillecchia](https://github.com/sammillecchia/cos452-sammillecchia)
+[sammillecchia.github.io/cos452-sammillecchia](https://https://sammillecchia.github.io/cos452-sammillecchia/)
 
 Labs:
 
