@@ -5,7 +5,7 @@ Repo Link:
 [github.com/sammillecchia/cos452-sammillecchia](https://github.com/sammillecchia/cos452-sammillecchia)
 
 Pages Link:
-[sammillecchia.github.io/cos452-sammillecchia](https://https://sammillecchia.github.io/cos452-sammillecchia/)
+[sammillecchia.github.io/cos452-sammillecchia](https://sammillecchia.github.io/cos452-sammillecchia/)
 
 Labs:
 
