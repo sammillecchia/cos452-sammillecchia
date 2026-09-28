@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Week 5 Starter -- Multiple Triangles & VBOs</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    canvas { width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="gl-canvas"></canvas>
+  <script>
+    const canvas = document.getElementById("gl-canvas");
+    const gl = canvas.getContext("webgl2");
+    if (!gl) {
+      throw new Error("WebGL2 is not available on this device/browser.");
+    }
+
+    const vertexSource = `#version 300 es
+      in vec2 a_position;
+      in vec3 a_color;
+      out vec3 v_color;
+      void main() {
+        gl_Position = vec4(a_position, 0.0, 1.0);
+        v_color = a_color;
+      }`;
+
+    const fragmentSource = `#version 300 es
+      precision mediump float;
+      in vec3 v_color;
+      out vec4 outColor;
+      void main() { outColor = vec4(v_color, 1.0); }`;
+
+    function createShader(gl, type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        const log = gl.getShaderInfoLog(shader);
+        gl.deleteShader(shader);
+        throw new Error("Shader failed to compile: " + log);
+      }
+      return shader;
+    }
+
+    function createProgram(gl, vsSource, fsSource) {
+      const program = gl.createProgram();
+      gl.attachShader(program, createShader(gl, gl.VERTEX_SHADER, vsSource));
+      gl.attachShader(program, createShader(gl, gl.FRAGMENT_SHADER, fsSource));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        throw new Error("Program failed to link: " + gl.getProgramInfoLog(program));
+      }
+      return program;
+    }
+
+    const program = createProgram(gl, vertexSource, fragmentSource);
+
+    // Interleaved: x, y, r, g, b per vertex. TODO(student): add a 3rd triangle.
+
+    // I believe that the reason why the colors look different on either side of
+    // the seam between the two triangles is because when the colors are averaged
+    // in the fragment shader they are interpolations of the colors of the vertices 
+    // they lie within meaning that colors in one triangle cant "bleed" into other 
+    // triangles. However since my Bottom Left and Top Right colors are the same
+    // the diagonal line through those points has the same/very similar colors 
+    // in both triangles.
+    const data = new Float32Array([
+      -0.6, -0.6,  1, 1, 1, //Bottom Left (1st Tri) 
+       0.6, -0.6,  1, 1, 0, //Bottom Right
+       0.6,  0.6,  0, 1, 0, //Top Right (1st Tri)
+      -0.6, -0.6,  1, 1, 1, //Bottom Left (2nd Tri)
+       0.6,  0.6,  0, 1, 0, //Top Right (2nd Tri)
+      -0.6,  0.6,  0, 1, 1, //Top Left
+      -0.6,  0.6,  1, 0, 0, //Top Left  (3rd Tri)
+       0.6,  0.6,  1, 0.5, 0, //Top Right (3rd Tri)
+       0.0,  0.9,  1, 1, 0, //Top?
+    ]);
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+
+    const F = Float32Array.BYTES_PER_ELEMENT; // 4
+    const stride = 5 * F;                     // 20
+
+    const aPosition = gl.getAttribLocation(program, "a_position");
+    gl.enableVertexAttribArray(aPosition);
+    gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, stride, 0);
+
+    const aColor = gl.getAttribLocation(program, "a_color");
+    gl.enableVertexAttribArray(aColor);
+    gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, stride, 2 * F);
+
+    const VERTEX_COUNT = 9; // TODO(student): 9 after adding a third triangle
+
+    function render() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.round(canvas.clientWidth * dpr);
+      const h = Math.round(canvas.clientHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      gl.viewport(0, 0, canvas.width, canvas.height);
+
+      gl.useProgram(program);
+      gl.clearColor(0.10, 0.10, 0.10, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.drawArrays(gl.TRIANGLES, 0, VERTEX_COUNT);
+    }
+
+    window.addEventListener("resize", render);
+    render();
+  </script>
+</body>
+</html>
