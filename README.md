@@ -17,11 +17,11 @@ Labs:
 
 [Week 04](https://sammillecchia.github.io/cos452-sammillecchia/week04/) | [Week 04 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week04/stretch.html)
 
-[Week 05](https://sammillecchia.github.io/cos452-sammillecchia/week05/) | [Week 05 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week05/stretch.html)
+[Week 05](https://sammillecchia.github.io/cos452-sammillecchia/week05/) | [Week 05 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week05/stretch.html) | [Week 05 Texture Experiment](https://sammillecchia.github.io/cos452-sammillecchia/week05/textureTest.html)
 
 (Uncommited Below)
 
-[Week 06](https://sammillecchia.github.io/cos452-sammillecchia/week06/) | [Week 06 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week06/stretch.html) | [Week 06 Texture Experiment](https://sammillecchia.github.io/cos452-sammillecchia/week06/textureTest.html)
+[Week 06](https://sammillecchia.github.io/cos452-sammillecchia/week06/) | [Week 06 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week06/stretch.html) | 
 
 Extras:
 
