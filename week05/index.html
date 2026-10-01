@@ -81,6 +81,9 @@
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
 
+    //Stride and offset are still correct with 3 triangles as there are still 20bytes
+    //per vertex (8 for pos, and 12 for colors) and the offsets are still 0 and 8 as
+    //that is still where the position and color data starts within those 20bytes
     const F = Float32Array.BYTES_PER_ELEMENT; // 4
     const stride = 5 * F;                     // 20
 
