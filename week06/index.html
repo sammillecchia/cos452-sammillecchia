@@ -111,15 +111,6 @@
     gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, stride, 2 * F);
     const uMatrix = gl.getUniformLocation(program, "u_matrix");
 
-    function print4x4matrix(m) {
-        let printStr = ''
-        for (let c = 0; c < 4; c++)
-        for (let r = 0; r < 4; r++) {
-           printStr += ` ${m[c * 4 + r]} `
-        }
-        console.log(printStr);
-    }
-
     function render() {
       const dpr = window.devicePixelRatio || 1;
       const w = Math.round(canvas.clientWidth * dpr);
@@ -145,23 +136,23 @@
       //matrices are multipled. This causes the shape to be scaled,
       //then translated from its original position and then finally 
       //rotated, causing the geometry to be rotated around the origin
-      //at a distance at which it is translated. Swapping the order in 
+      //at the distance at which it is translated. Swapping the order in 
       //which translation and rotation are applied changes the order to 
       //S -> R -> T, this causes the geometry to be first scaled down, 
       //then rotated (at the origin) and finally be translated from the 
       //origin.
-
+      // By using the readout from the live demo with these parameters
+      // M = T(-0.50, 0.00) . R(115°) . S(0.50)
+      // It displays the same translation to the cube as seen in this 
+      // example as the order of operations are the same 
+      // ( R(115°) is as close as I could get to 2rad )
       
-      let modelSTR = multiply(rotationMatrix, translationMatrix);
+      let modelSTR = multiply(translationMatrix, rotationMatrix);
       modelSTR = multiply(modelSTR, scalingMatrix);   
 
       let modelSRT = multiply(translationMatrix, rotationMatrix);
       modelSRT = multiply(modelSRT, scalingMatrix); 
-      console.log(modelSTR);
-      console.log(modelSRT);
       gl.uniformMatrix4fv(uMatrix, false, modelSTR);
-
-
 
       gl.clearColor(0.10, 0.10, 0.10, 1.0);
       gl.clear(gl.COLOR_BUFFER_BIT);
