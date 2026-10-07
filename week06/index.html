@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Week 6 Starter -- Transformation Matrices</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    canvas { width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="gl-canvas"></canvas>
+  <script>
+    const canvas = document.getElementById("gl-canvas");
+    const gl = canvas.getContext("webgl2");
+    if (!gl) {
+      throw new Error("WebGL2 is not available on this device/browser.");
+    }
+
+    //The matrix renders unchanged with the identity matrix
+    //since the vec4 created with a_position when multiplied
+    //with the uniform matrix is equal to the original position
+    //When I remove the multiplication step u_matrix * vec4(..)
+    //I also observe no change
+    const vertexSource = `#version 300 es
+      in vec2 a_position;
+      in vec3 a_color;
+      uniform mat4 u_matrix;
+      out vec3 v_color;
+      void main() {
+        gl_Position = u_matrix * vec4(a_position, 0.0, 1.0);
+        v_color = a_color;
+      }`;
+
+    const fragmentSource = `#version 300 es
+      precision mediump float;
+      in vec3 v_color;
+      out vec4 outColor;
+      void main() { outColor = vec4(v_color, 1.0); }`;
+
+    function createShader(gl, type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        const log = gl.getShaderInfoLog(shader);
+        gl.deleteShader(shader);
+        throw new Error("Shader failed to compile: " + log);
+      }
+      return shader;
+    }
+
+    function createProgram(gl, vsSource, fsSource) {
+      const program = gl.createProgram();
+      gl.attachShader(program, createShader(gl, gl.VERTEX_SHADER, vsSource));
+      gl.attachShader(program, createShader(gl, gl.FRAGMENT_SHADER, fsSource));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        throw new Error("Program failed to link: " + gl.getProgramInfoLog(program));
+      }
+      return program;
+    }
+
+    // ---- Column-major mat4 helpers ----
+    function identity() {
+      return new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
+    }
+    function translation(tx, ty, tz) {
+      return new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, tx,ty,tz,1]);
+    }
+    function rotationZ(rad) {
+      const c = Math.cos(rad), s = Math.sin(rad);
+      return new Float32Array([c,s,0,0, -s,c,0,0, 0,0,1,0, 0,0,0,1]);
+    }
+    function scaling(sx, sy, sz) {
+      return new Float32Array([sx,0,0,0, 0,sy,0,0, 0,0,sz,0, 0,0,0,1]);
+    }
+    function multiply(a, b) {
+      const out = new Float32Array(16);
+      for (let c = 0; c < 4; c++)
+        for (let r = 0; r < 4; r++) {
+          let sum = 0;
+          for (let k = 0; k < 4; k++) sum += a[k * 4 + r] * b[c * 4 + k];
+          out[c * 4 + r] = sum;
+        }
+      return out;
+    }
+
+    const program = createProgram(gl, vertexSource, fragmentSource);
+
+    // interleaved square: x, y, r, g, b
+    const data = new Float32Array([
+      -0.5, -0.5,  1, 0, 0,
+       0.5, -0.5,  0, 1, 0,
+       0.5,  0.5,  0, 0, 1,
+      -0.5, -0.5,  1, 0, 0,
+       0.5,  0.5,  0, 0, 1,
+      -0.5,  0.5,  1, 1, 0,
+    ]);
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+
+    const F = Float32Array.BYTES_PER_ELEMENT;
+    const stride = 5 * F;
+    const aPosition = gl.getAttribLocation(program, "a_position");
+    gl.enableVertexAttribArray(aPosition);
+    gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, stride, 0);
+    const aColor = gl.getAttribLocation(program, "a_color");
+    gl.enableVertexAttribArray(aColor);
+    gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, stride, 2 * F);
+    const uMatrix = gl.getUniformLocation(program, "u_matrix");
+
+    function print4x4matrix(m) {
+        let printStr = ''
+        for (let c = 0; c < 4; c++)
+        for (let r = 0; r < 4; r++) {
+           printStr += ` ${m[c * 4 + r]} `
+        }
+        console.log(printStr);
+    }
+
+    function render() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.round(canvas.clientWidth * dpr);
+      const h = Math.round(canvas.clientHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      gl.viewport(0, 0, canvas.width, canvas.height);
+
+      gl.useProgram(program);
+
+      const translationMatrix = translation(-0.5, 0, 0);
+      const rotationMatrix = rotationZ(2);
+      const scalingMatrix = scaling(0.5, 0.5, 0.5);
+
+      //By swapping the rotation and translation matrix operations
+      //it swaps the order in which those transformations are applied 
+      //to the matrixes, and thereby the vertice positions. By 
+      //multiplying with the rotation matrix first it causes the 
+      //order of transformations applied to be S -> T -> R since
+      //transformations are applied in opposite order in which their
+      //matrices are multipled. This causes the shape to be scaled,
+      //then translated from its original position and then finally 
+      //rotated, causing the geometry to be rotated around the origin
+      //at a distance at which it is translated. Swapping the order in 
+      //which translation and rotation are applied changes the order to 
+      //S -> R -> T, this causes the geometry to be first scaled down, 
+      //then rotated (at the origin) and finally be translated from the 
+      //origin.
+
+      
+      let modelSTR = multiply(rotationMatrix, translationMatrix);
+      modelSTR = multiply(modelSTR, scalingMatrix);   
+
+      let modelSRT = multiply(translationMatrix, rotationMatrix);
+      modelSRT = multiply(modelSRT, scalingMatrix); 
+      console.log(modelSTR);
+      console.log(modelSRT);
+      gl.uniformMatrix4fv(uMatrix, false, modelSTR);
+
+
+
+      gl.clearColor(0.10, 0.10, 0.10, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+
+    window.addEventListener("resize", render);
+    render();
+  </script>
+</body>
+</html>
