@@ -147,11 +147,13 @@
       // example as the order of operations are the same 
       // ( R(115°) is as close as I could get to 2rad )
       
-      let modelSTR = multiply(translationMatrix, rotationMatrix);
+      let modelSTR = multiply(rotationMatrix, translationMatrix);
       modelSTR = multiply(modelSTR, scalingMatrix);   
 
-      let modelSRT = multiply(translationMatrix, rotationMatrix);
-      modelSRT = multiply(modelSRT, scalingMatrix); 
+      //UNUSED: Matrix that swaps the operations of rotation and translation
+      // let modelSRT = multiply(translationMatrix, rotationMatrix);
+      // modelSRT = multiply(modelSRT, scalingMatrix); 
+
       gl.uniformMatrix4fv(uMatrix, false, modelSTR);
 
       gl.clearColor(0.10, 0.10, 0.10, 1.0);

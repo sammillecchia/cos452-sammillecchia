@@ -160,10 +160,6 @@
       let modelSTR = multiply(rotationMatrix, translationMatrix);
       modelSTR = multiply(modelSTR, scalingMatrix);   
 
-      let modelSRT = multiply(translationMatrix, rotationMatrix);
-      modelSRT = multiply(modelSRT, scalingMatrix); 
-      console.log(modelSTR);
-      console.log(modelSRT);
       gl.uniformMatrix4fv(uMatrix, false, modelSTR);
 
 
