@@ -123,10 +123,21 @@
 
       gl.useProgram(program);
 
-      const translationMatrix = translation(-0.5, 0, 0);
-      const rotationMatrix = rotationZ(2);
-      const scalingMatrix = scaling(0.5, 0.5, 0.5);
+      
+      const identityMatrix  = identity();
+      //gl.uniformMatrix4fv(uMatrix, false, identityMatrix);
 
+      const translationMatrix = translation(-0.5, 0, 0);
+      //gl.uniformMatrix4fv(uMatrix, false, translationMatrix);
+      
+      const rotationMatrix = rotationZ(2);
+      //gl.uniformMatrix4fv(uMatrix, false, rotationMatrix);
+
+      const scalingMatrix = scaling(0.5, 0.5, 0.5);
+      //gl.uniformMatrix4fv(uMatrix, false, scalingMatrix);
+
+
+        
       //By swapping the rotation and translation matrix operations
       //it swaps the order in which those transformations are applied 
       //to the matrixes, and thereby the vertice positions. By 
@@ -154,7 +165,7 @@
       // let modelSRT = multiply(translationMatrix, rotationMatrix);
       // modelSRT = multiply(modelSRT, scalingMatrix); 
 
-      gl.uniformMatrix4fv(uMatrix, false, modelSTR);
+     gl.uniformMatrix4fv(uMatrix, false, modelSTR);
 
       gl.clearColor(0.10, 0.10, 0.10, 1.0);
       gl.clear(gl.COLOR_BUFFER_BIT);

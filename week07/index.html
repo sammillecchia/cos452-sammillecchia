@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Week 7 Starter -- Camera Basics (MVP)</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    canvas { width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="gl-canvas"></canvas>
+  <script>
+    const canvas = document.getElementById("gl-canvas");
+    const gl = canvas.getContext("webgl2");
+    if (!gl) {
+      throw new Error("WebGL2 is not available on this device/browser.");
+    }
+
+    const vertexSource = `#version 300 es
+      in vec2 a_position;
+      in vec3 a_color;
+      uniform mat4 u_mvp;
+      out vec3 v_color;
+      void main() {
+        gl_Position = u_mvp * vec4(a_position, 0.0, 1.0);
+        v_color = a_color;
+      }`;
+
+    const fragmentSource = `#version 300 es
+      precision mediump float;
+      in vec3 v_color;
+      out vec4 outColor;
+      void main() { outColor = vec4(v_color, 1.0); }`;
+
+    function createShader(gl, type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error("Shader failed to compile: " + gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+    function createProgram(gl, vsSource, fsSource) {
+      const program = gl.createProgram();
+      gl.attachShader(program, createShader(gl, gl.VERTEX_SHADER, vsSource));
+      gl.attachShader(program, createShader(gl, gl.FRAGMENT_SHADER, fsSource));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        throw new Error("Program failed to link: " + gl.getProgramInfoLog(program));
+      }
+      return program;
+    }
+
+    // ---- Column-major mat4 helpers ----
+    function translation(tx, ty) { return new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, tx,ty,0,1]); }
+    function scaling(sx, sy) { return new Float32Array([sx,0,0,0, 0,sy,0,0, 0,0,1,0, 0,0,0,1]); }
+    function orthographic(l, r, b, t) {
+      return new Float32Array([
+        2/(r-l),0,0,0, 0,2/(t-b),0,0, 0,0,-1,0, -(r+l)/(r-l),-(t+b)/(t-b),0,1,
+      ]);
+    }
+    function multiply(a, b) {
+      const out = new Float32Array(16);
+      for (let c = 0; c < 4; c++)
+        for (let r = 0; r < 4; r++) {
+          let sum = 0;
+          for (let k = 0; k < 4; k++) sum += a[k * 4 + r] * b[c * 4 + k];
+          out[c * 4 + r] = sum;
+        }
+      return out;
+    }
+
+    const program = createProgram(gl, vertexSource, fragmentSource);
+
+    const data = new Float32Array([
+      -0.5, -0.5,  1, 0, 0,
+       0.5, -0.5,  0, 1, 0,
+       0.5,  0.5,  0, 0, 1,
+      -0.5, -0.5,  1, 0, 0,
+       0.5,  0.5,  0, 0, 1,
+      -0.5,  0.5,  1, 1, 0
+    ]);
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+    const F = Float32Array.BYTES_PER_ELEMENT, stride = 5 * F;
+    const aPosition = gl.getAttribLocation(program, "a_position");
+    gl.enableVertexAttribArray(aPosition);
+    gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, stride, 0);
+    const aColor = gl.getAttribLocation(program, "a_color");
+    gl.enableVertexAttribArray(aColor);
+    gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, stride, 2 * F);
+    const uMVP = gl.getUniformLocation(program, "u_mvp");
+
+    // TODO(student): add camera variables and a zoom factor.
+    const cx = 0, cy = 0, zoom = 1;
+
+    function render() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.round(canvas.clientWidth * dpr);
+      const h = Math.round(canvas.clientHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+      gl.viewport(0, 0, canvas.width, canvas.height);
+
+      const aspect = canvas.width / canvas.height;
+      const P = orthographic(-aspect, aspect, -1, 1);
+      const V = multiply(scaling(zoom, zoom), translation(-cx, -cy));
+      let M = translation(0, 0); // TODO(student): add a second object
+
+      gl.useProgram(program);
+      gl.clearColor(0.10, 0.10, 0.10, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+
+      let mvp = multiply(multiply(P, V), M);
+      gl.uniformMatrix4fv(uMVP, false, mvp);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+      M = translation(1, 1);
+      mvp = multiply(multiply(P, V), M);
+      gl.uniformMatrix4fv(uMVP, false, mvp);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+
+    window.addEventListener("resize", render);
+    render();
+  </script>
+</body>
+</html>
