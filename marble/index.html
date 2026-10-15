@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Week 8 Starter -- Cube & Depth Testing</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    canvas { width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="gl-canvas"></canvas>
+  <script type="module">
+    import {calculatedFaces, calculatedIndices} from './icosphere.js';
+
+    const canvas = document.getElementById("gl-canvas");
+    const gl = canvas.getContext("webgl2");
+    if (!gl) {
+      throw new Error("WebGL2 is not available on this device/browser.");
+    }
+
+
+    const vertexSource = `#version 300 es
+    in vec3 a_position;
+    uniform mat4 u_mvp;
+    out vec3 v_color; // Pass color to fragment shader
+    void main() {
+        gl_Position = u_mvp * vec4(a_position, 1.0);
+        // Convert -1 to 1 range into 0 to 1 range for colors
+        v_color = a_position * 0.5 + 0.5; 
+    }`;
+
+    const fragmentSource = `#version 300 es
+    precision mediump float;
+    in vec3 v_color;
+    out vec4 outColor;
+    void main() { 
+        outColor = vec4(v_color, 1.0);  
+    }`;
+    
+    function createShader(gl, type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error("Shader failed to compile: " + gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+    function createProgram(gl, vsSource, fsSource) {
+      const program = gl.createProgram();
+      gl.attachShader(program, createShader(gl, gl.VERTEX_SHADER, vsSource));
+      gl.attachShader(program, createShader(gl, gl.FRAGMENT_SHADER, fsSource));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        throw new Error("Program failed to link: " + gl.getProgramInfoLog(program));
+      }
+      return program;
+    }
+
+    // ---- Column-major mat4 helpers ----
+    function translation(tx, ty, tz) { return new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, tx,ty,tz,1]); }
+    function rotationX(a) { const c=Math.cos(a),s=Math.sin(a); return new Float32Array([1,0,0,0, 0,c,s,0, 0,-s,c,0, 0,0,0,1]); }
+    function rotationY(a) { const c=Math.cos(a),s=Math.sin(a); return new Float32Array([c,0,-s,0, 0,1,0,0, s,0,c,0, 0,0,0,1]); }
+    function perspective(fovy, aspect, near, far) {
+      const f = 1/Math.tan(fovy/2), nf = 1/(near-far);
+      return new Float32Array([f/aspect,0,0,0, 0,f,0,0, 0,0,(far+near)*nf,-1, 0,0,2*far*near*nf,0]);
+    }
+    function multiply(a, b) {
+      const out = new Float32Array(16);
+      for (let c=0;c<4;c++) for (let r=0;r<4;r++){ let s=0; for(let k=0;k<4;k++) s+=a[k*4+r]*b[c*4+k]; out[c*4+r]=s; }
+      return out;
+    }
+
+  
+
+    const program = createProgram(gl, vertexSource, fragmentSource);
+
+  
+    const indiceBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, indiceBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, calculatedIndices, gl.STATIC_DRAW);
+
+    const faceBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, faceBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, calculatedFaces, gl.STATIC_DRAW);
+
+    const aPosition = gl.getAttribLocation(program, "a_position");
+    gl.enableVertexAttribArray(aPosition);
+    gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
+    const uMVP = gl.getUniformLocation(program, "u_mvp");
+
+    gl.enable(gl.DEPTH_TEST); // TODO(student): try commenting this out
+
+    function frame(t) {
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.round(canvas.clientWidth * dpr);
+      const h = Math.round(canvas.clientHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+      gl.viewport(0, 0, canvas.width, canvas.height);
+
+      const a = t * 0.0008;
+      const aspect = canvas.width / canvas.height;
+      const P = perspective(50 * Math.PI / 180, aspect, 0.1, 100);
+      const V = translation(0, 0, -3);
+      const M = multiply(rotationY(a), rotationX(a * 0.6));
+      const mvp = multiply(multiply(P, V), M);
+
+
+      gl.useProgram(program);
+      gl.uniformMatrix4fv(uMVP, false, mvp);
+
+      gl.clearColor(0.10, 0.10, 0.10, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.drawElements(gl.TRIANGLES, calculatedFaces.length, gl.UNSIGNED_SHORT, 0);
+
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
