@@ -137,13 +137,17 @@
     }
 
     window.addEventListener("keydown", (e) => {
-      //code taken from the textbook, I swapped the functionkey
-      //of ArrowRight and ArrowLeft as I felt it more intuitive
+      // code taken from the textbook, I swapped the functions
+      // of the arrow keys as I felt moving the world directly was 
+      // more intuitive
       if (e.key === "ArrowRight") cx -= 0.1;
       if (e.key === "ArrowLeft")  cx += 0.1;
+      if (e.key === "ArrowUp") cy -= 0.1;
+      if (e.key === "ArrowDown")  cy += 0.1;
 
-      //added more than just + and - as you need to hold shift for
-      //one and it was annoying to swap between the two
+
+      // added more than just + and - as you need to hold shift for
+      // one and it was annoying to swap between the two
       if (e.key === "+" || e.key === "=")  zoom += 0.1;
       if (e.key === "-" || e.key ===  "_")  zoom > 0.15 ? zoom -= 0.1 : zoom;
 
