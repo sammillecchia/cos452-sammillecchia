@@ -80,7 +80,7 @@
        0.5,  0.5,  0, 0, 1,
       -0.5, -0.5,  1, 0, 0,
        0.5,  0.5,  0, 0, 1,
-      -0.5,  0.5,  1, 1, 0
+      -0.5,  0.5,  1, 1, 0,
     ]);
     const buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -94,8 +94,8 @@
     gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, stride, 2 * F);
     const uMVP = gl.getUniformLocation(program, "u_mvp");
 
-    // TODO(student): add camera variables and a zoom factor.
-    const cx = 0, cy = 0, zoom = 1;
+    // Camera: fixed at (0, 0), zoom 1 for now. Parts (b) and (c) bring it to life.
+    let cx = 0, cy = 0, zoom = 1;
 
     function render() {
       const dpr = window.devicePixelRatio || 1;
@@ -104,24 +104,51 @@
       if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
       gl.viewport(0, 0, canvas.width, canvas.height);
 
+      // By calculating the aspect ratio and then using it as the parameters
+      // for the left/right in calculating the orthographic projection it
+      // scales the projection to keep the aspect ratio no matter the screen
+      // size. So both the declaration of aspect and P makes the resizing work.
       const aspect = canvas.width / canvas.height;
       const P = orthographic(-aspect, aspect, -1, 1);
+
+      // The translation applied here is -cx, -cy as to move the "camera"
+      // it requires a negative movement of the world. If the translation
+      // was applied without the negatives it would move the camera the
+      // incorrect way as intended.
       const V = multiply(scaling(zoom, zoom), translation(-cx, -cy));
-      let M = translation(0, 0); // TODO(student): add a second object
+
+      const M = translation(0, 0);
 
       gl.useProgram(program);
       gl.clearColor(0.10, 0.10, 0.10, 1.0);
       gl.clear(gl.COLOR_BUFFER_BIT);
 
+      //Changed from const to let, so it can be reassigned for multiple squares
       let mvp = multiply(multiply(P, V), M);
       gl.uniformMatrix4fv(uMVP, false, mvp);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-      M = translation(1, 1);
-      mvp = multiply(multiply(P, V), M);
+      const M2 = translation(-1.5, 0);
+      mvp = multiply(multiply(P, V), M2);
       gl.uniformMatrix4fv(uMVP, false, mvp);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+
     }
+
+    window.addEventListener("keydown", (e) => {
+      //code taken from the textbook, I swapped the functionkey
+      //of ArrowRight and ArrowLeft as I felt it more intuitive
+      if (e.key === "ArrowRight") cx -= 0.1;
+      if (e.key === "ArrowLeft")  cx += 0.1;
+
+      //added more than just + and - as you need to hold shift for
+      //one and it was annoying to swap between the two
+      if (e.key === "+" || e.key === "=")  zoom += 0.1;
+      if (e.key === "-" || e.key ===  "_")  zoom > 0.15 ? zoom -= 0.1 : zoom;
+
+      render();
+    });
 
     window.addEventListener("resize", render);
     render();
