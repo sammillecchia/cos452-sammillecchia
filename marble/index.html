@@ -23,7 +23,7 @@
     const vertexSource = `#version 300 es
     in vec3 a_position;
     uniform mat4 u_mvp;
-    out vec3 v_color; // Pass color to fragment shader
+    out vec3 v_color; 
     void main() {
         gl_Position = u_mvp * vec4(a_position, 1.0);
         // Convert -1 to 1 range into 0 to 1 range for colors
@@ -37,7 +37,7 @@
     void main() { 
         outColor = vec4(v_color, 1.0);  
     }`;
-    
+
     function createShader(gl, type, source) {
       const shader = gl.createShader(type);
       gl.shaderSource(shader, source);
@@ -72,7 +72,7 @@
       return out;
     }
 
-  
+    
 
     const program = createProgram(gl, vertexSource, fragmentSource);
 
@@ -92,7 +92,48 @@
 
     gl.enable(gl.DEPTH_TEST); // TODO(student): try commenting this out
 
+    const aspect = canvas.width / canvas.height;
+    const P = perspective(50 * Math.PI / 180, aspect, 0.1, 100);
+    const V = translation(0, 0, -3);
+    const VP = multiply(P, V);
+
+        let angleX = 0.4, angleY = 0.6;
+    const keys = {};
+    let dragging = false, lastX = 0, lastY = 0;
+    let autoSpin = true;
+
+    canvas.addEventListener("keydown", (e) => {
+      if (e.key === " ") { autoSpin = !autoSpin; e.preventDefault(); return; }
+      if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)) {
+        keys[e.key] = true; e.preventDefault();
+      }
+    });
+    canvas.addEventListener("keyup", (e) => { keys[e.key] = false; });
+
+    canvas.addEventListener("pointerdown", (e) => {
+      dragging = true; lastX = e.clientX; lastY = e.clientY;
+      canvas.setPointerCapture(e.pointerId);
+    });
+    canvas.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      angleY += (e.clientX - lastX) * 0.01;
+      angleX += (e.clientY - lastY) * 0.01;
+      lastX = e.clientX; lastY = e.clientY;
+    });
+    canvas.addEventListener("pointerup", () => { dragging = false; });
+
+
+    let last = 0;
     function frame(t) {
+      const dt = last ? (t - last) / 1000 : 0;
+      last = t;
+
+      if (keys["ArrowLeft"])  angleY -= 1.8 * dt;
+      if (keys["ArrowRight"]) angleY += 1.8 * dt;
+      if (keys["ArrowUp"])    angleX -= 1.8 * dt;
+      if (keys["ArrowDown"])  angleX += 1.8 * dt;
+      if (autoSpin && !dragging) angleY += 0.5 * dt;
+
       const dpr = window.devicePixelRatio || 1;
       const w = Math.round(canvas.clientWidth * dpr);
       const h = Math.round(canvas.clientHeight * dpr);
@@ -100,11 +141,8 @@
       gl.viewport(0, 0, canvas.width, canvas.height);
 
       const a = t * 0.0008;
-      const aspect = canvas.width / canvas.height;
-      const P = perspective(50 * Math.PI / 180, aspect, 0.1, 100);
-      const V = translation(0, 0, -3);
-      const M = multiply(rotationY(a), rotationX(a * 0.6));
-      const mvp = multiply(multiply(P, V), M);
+      const M = multiply(rotationX(angleX), rotationY(angleY));
+      const mvp = multiply(VP, M);
 
 
       gl.useProgram(program);

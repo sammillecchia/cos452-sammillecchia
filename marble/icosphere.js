@@ -105,4 +105,4 @@ function flattenFacesArray(facesArr) {
     return flatFacesArr;
 }
 
-create(1);
+create(3);
