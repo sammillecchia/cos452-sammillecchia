@@ -21,10 +21,13 @@ Labs:
 
 [Week 06](https://sammillecchia.github.io/cos452-sammillecchia/week06/) | [Week 06 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week06/stretch.html) | 
 
-
-(Uncommited Below)
-
 [Week 07](https://sammillecchia.github.io/cos452-sammillecchia/week07/) | [Week 07 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week07/stretch.html) | 
+
+[Week 08](https://sammillecchia.github.io/cos452-sammillecchia/week08/) | [Week 08 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week08/stretch.html) |
+
+(not commited below)
+
+[Week 09](https://sammillecchia.github.io/cos452-sammillecchia/week09/) | [Week 09 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week09/stretch.html) |
 
 
 Extras:
@@ -32,3 +35,5 @@ Extras:
 [2D Game of Life](https://sammillecchia.github.io/cos452-sammillecchia/extras/2dGOL.html) 
 
 [Image2GOL](https://sammillecchia.github.io/cos452-sammillecchia/extras/image2GOL.html) 
+
+[Marble](https://sammillecchia.github.io/cos452-sammillecchia/marble) 

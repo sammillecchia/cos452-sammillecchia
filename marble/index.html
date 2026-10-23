@@ -92,12 +92,14 @@
 
     gl.enable(gl.DEPTH_TEST); // TODO(student): try commenting this out
 
+    gl.enable(gl.CULL_FACE);
+
     const aspect = canvas.width / canvas.height;
     const P = perspective(50 * Math.PI / 180, aspect, 0.1, 100);
     const V = translation(0, 0, -3);
     const VP = multiply(P, V);
 
-        let angleX = 0.4, angleY = 0.6;
+    let angleX = 0.4, angleY = 0.6;
     const keys = {};
     let dragging = false, lastX = 0, lastY = 0;
     let autoSpin = true;

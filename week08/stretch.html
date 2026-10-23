@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Week 8 Starter -- Cube &amp; Depth Testing</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    canvas { width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="gl-canvas"></canvas>
+  <script>
+    const canvas = document.getElementById("gl-canvas");
+    const gl = canvas.getContext("webgl2");
+    if (!gl) {
+      throw new Error("WebGL2 is not available on this device/browser.");
+    }
+
+    const vertexSource = `#version 300 es
+      in vec3 a_position;
+      in vec3 a_color;
+      uniform mat4 u_mvp;
+      out vec3 v_color;
+      void main() {
+        gl_Position = u_mvp * vec4(a_position, 1.0);
+        v_color = a_color;
+      }`;
+
+    const fragmentSource = `#version 300 es
+      precision mediump float;
+      in vec3 v_color;
+      out vec4 outColor;
+      void main() { outColor = vec4(v_color, 1.0); }`;
+
+    function createShader(gl, type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error("Shader failed to compile: " + gl.getShaderInfoLog(shader));
+      }
+      return shader;
+    }
+    function createProgram(gl, vsSource, fsSource) {
+      const program = gl.createProgram();
+      gl.attachShader(program, createShader(gl, gl.VERTEX_SHADER, vsSource));
+      gl.attachShader(program, createShader(gl, gl.FRAGMENT_SHADER, fsSource));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        throw new Error("Program failed to link: " + gl.getProgramInfoLog(program));
+      }
+      return program;
+    }
+
+    // ---- Column-major mat4 helpers ----
+    function translation(tx, ty, tz) { return new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, tx,ty,tz,1]); }
+    function rotationX(a) { const c=Math.cos(a),s=Math.sin(a); return new Float32Array([1,0,0,0, 0,c,s,0, 0,-s,c,0, 0,0,0,1]); }
+    function rotationY(a) { const c=Math.cos(a),s=Math.sin(a); return new Float32Array([c,0,-s,0, 0,1,0,0, s,0,c,0, 0,0,0,1]); }
+    function perspective(fovy, aspect, near, far) {
+      const f = 1/Math.tan(fovy/2), nf = 1/(near-far);
+      return new Float32Array([f/aspect,0,0,0, 0,f,0,0, 0,0,(far+near)*nf,-1, 0,0,2*far*near*nf,0]);
+    }
+    function multiply(a, b) {
+      const out = new Float32Array(16);
+      for (let c=0;c<4;c++) for (let r=0;r<4;r++){ let s=0; for(let k=0;k<4;k++) s+=a[k*4+r]*b[c*4+k]; out[c*4+r]=s; }
+      return out;
+    }
+
+    function makeCube() {
+      const p = [
+        [-0.5,-0.5,-0.5],[0.5,-0.5,-0.5],[0.5,0.5,-0.5],[-0.5,0.5,-0.5],
+        [-0.5,-0.5, 0.5],[0.5,-0.5, 0.5],[0.5,0.5, 0.5],[-0.5,0.5, 0.5],
+      ];
+      const faces = [
+        { idx:[4,5,6,7], color:[0.12,0.12,0.12] },
+        { idx:[1,0,3,2], color:[0.24,0.24,0.24] },
+        { idx:[5,1,2,6], color:[0.36,0.36,0.36] },
+        { idx:[0,4,7,3], color:[0.48,0.48,0.48] },
+        { idx:[7,6,2,3], color:[0.60,0.60,0.60] },
+        { idx:[0,1,5,4], color:[0.72,0.72,0.72] },
+      ];
+      const out = [];
+      for (const f of faces) {
+        const [a, b, c, d] = f.idx;
+        for (const i of [a, b, c, a, c, d]) out.push(...p[i], ...f.color);
+      }
+      return new Float32Array(out);
+    }
+
+    const program = createProgram(gl, vertexSource, fragmentSource);
+
+    const data = makeCube();
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+    const F = Float32Array.BYTES_PER_ELEMENT, stride = 6 * F;
+    const aPosition = gl.getAttribLocation(program, "a_position");
+    gl.enableVertexAttribArray(aPosition);
+    gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, stride, 0);
+    const aColor = gl.getAttribLocation(program, "a_color");
+    gl.enableVertexAttribArray(aColor);
+    gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, stride, 3 * F);
+    const uMVP = gl.getUniformLocation(program, "u_mvp");
+
+    // When this line is commented out triangles that are supposed to be behind other
+    // triangles are drawn on top, messing up the drawing of the cube. In reality
+    // I believe that the vertices are being drawn in the order they are defined,
+    // so vertices that are defined later are always drawn on top.
+    gl.enable(gl.DEPTH_TEST);
+
+    gl.enable(gl.CULL_FACE)
+
+    function frame(t) {
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.round(canvas.clientWidth * dpr);
+      const h = Math.round(canvas.clientHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+      gl.viewport(0, 0, canvas.width, canvas.height);
+
+      const a = t * 0.0008;
+      const aspect = canvas.width / canvas.height;
+
+      // With a smaller FOV the cube appears bigger, and a larger FOX it appears 
+      // smaller. This is because a lower FOV makes the camera look at a smaller
+      // horizontal and vertical angle, and a larger one does the opposite. This
+      // results in lower FOV's appearing to zoom in and higher FOV's to zoom out.
+      const P = perspective(100 * Math.PI / 180, aspect, 0.1, 100);
+      const V = translation(0, 0, -3);
+      const M = multiply(rotationY(a), rotationX(a * 0.6));
+      const mvp = multiply(multiply(P, V), M);
+
+      gl.useProgram(program);
+      gl.uniformMatrix4fv(uMVP, false, mvp);
+
+      gl.clearColor(0.10, 0.10, 0.10, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); // (b): keep both bits
+      gl.drawArrays(gl.TRIANGLES, 0, 36);
+
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

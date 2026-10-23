@@ -105,4 +105,8 @@ function flattenFacesArray(facesArr) {
     return flatFacesArr;
 }
 
+
+// Set the level of detail here higher = more vertices
+// Be warned that it exponentially increases the number of vertices 
+// so even values as low as 5 can crash the browser.
 create(3);
