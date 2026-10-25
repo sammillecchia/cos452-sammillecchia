@@ -1,4 +1,8 @@
-//http://blog.andreaskahler.com/2009/06/creating-icosphere-mesh-in-code.html#:~:text=Icospheres%20are%20a%20type%20of%20geodesic%20dome.,parameter%20to%20the%20icosphere.%20Creating%20an%20Icosahedron.
+// JS port from a program by Andreas Kahler
+// http://blog.andreaskahler.com/2009/06/creating-icosphere-mesh-in-code.html#:~:text=Icospheres%20are%20a%20type%20of%20geodesic%20dome.,parameter%20to%20the%20icosphere.%20Creating%20an%20Icosahedron.
+// Creates an icosphere by starting with an icosahedron and iterating 
+// subdivisions on each tri to get a better sphere approximation.
+
 let geometry = [];
 let middlePointIndexCache = new Map();
 let index = 0;

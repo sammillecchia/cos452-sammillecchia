@@ -13,6 +13,7 @@
   <script type="module">
     import {calculatedFaces, calculatedIndices} from './icosphere.js';
 
+
     const canvas = document.getElementById("gl-canvas");
     const gl = canvas.getContext("webgl2");
     if (!gl) {
@@ -90,14 +91,13 @@
     gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
     const uMVP = gl.getUniformLocation(program, "u_mvp");
 
-    gl.enable(gl.DEPTH_TEST); // TODO(student): try commenting this out
-
+    gl.enable(gl.DEPTH_TEST); 
     gl.enable(gl.CULL_FACE);
 
     const aspect = canvas.width / canvas.height;
-    const P = perspective(50 * Math.PI / 180, aspect, 0.1, 100);
+    const P = perspective(93 * Math.PI / 180, aspect, 0.1, 100);
     const V = translation(0, 0, -3);
-    const VP = multiply(P, V);
+    let VP = multiply(P, V);
 
     let angleX = 0.4, angleY = 0.6;
     const keys = {};
@@ -130,16 +130,19 @@
       const dt = last ? (t - last) / 1000 : 0;
       last = t;
 
-      if (keys["ArrowLeft"])  angleY -= 1.8 * dt;
-      if (keys["ArrowRight"]) angleY += 1.8 * dt;
-      if (keys["ArrowUp"])    angleX -= 1.8 * dt;
-      if (keys["ArrowDown"])  angleX += 1.8 * dt;
-      if (autoSpin && !dragging) angleY += 0.5 * dt;
-
       const dpr = window.devicePixelRatio || 1;
       const w = Math.round(canvas.clientWidth * dpr);
       const h = Math.round(canvas.clientHeight * dpr);
-      if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+      
+      if (canvas.width !== w || canvas.height !== h) { 
+        canvas.width = w; 
+        canvas.height = h; 
+        
+        const newAspect = canvas.width / canvas.height;
+        const newP = perspective(50 * Math.PI / 180, newAspect, 0.1, 100);
+        VP = multiply(newP, V); 
+      }
+
       gl.viewport(0, 0, canvas.width, canvas.height);
 
       const a = t * 0.0008;
