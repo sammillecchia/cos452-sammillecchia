@@ -1,17 +1,100 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <title>Week 8 Starter -- Cube & Depth Testing</title>
   <style>
-    html, body { height: 100%; margin: 0; }
-    canvas { width: 100%; height: 100%; display: block; }
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
   </style>
 </head>
+
 <body>
   <canvas id="gl-canvas"></canvas>
   <script type="module">
-    import {calculatedFaces, calculatedIndices} from './icosphere.js';
+    import { calculatedFaces, calculatedIndices } from './icosphere.js';
+
+
+    //player position in cartesian coordinates
+    let playerPosition = [0, 0, 0];
+
+    let playerInputs = {
+      camera: {
+        mouseX: 0,
+        mouseY: 0,
+        keyPosX: 0,
+        keyNegX: 0,
+        keyPosY: 0,
+        keyNegY: 0
+      },
+      movement: {
+        keyForward: 0,
+        keyBack: 0,
+        keyLeft: 0,
+        keyRight: 0,
+        keyJump: 0
+      }
+    }
+
+    // A class for handling moving the viewport and handling collision
+    class Camera {
+
+      constructor(distance) {
+        this.distance = distance;
+        this.azimuth = 0; //X rotation
+        this.pitch = 0;   //Y rotation
+        this.up = [0, 1, 0];
+        this.cameraMatrix = new Float32Array(16)
+        this.viewMatrix = new Float32Array(16);
+      }
+
+      // updates camara view position, takes a calculated target position and
+      // the playerInputs.camera object 
+      // heavily referenced webgl2 fundamentals for creating the camera system
+      // https://webgl2fundamentals.org/webgl/lessons/webgl-visualizing-the-camera.html
+      update(targetPosition, inputs) {
+        // TODO: ADD Camera Keyboard Controls
+
+        // Starting with just 0.01 but may want to have variable sensitivty
+        this.azimuth -= inputs.camera.mouseX * 0.01; 
+        this.pitch -= inputs.camera.mouseY * 0.005;
+        
+        // Reset camera 
+        inputs.camera.mouseX = 0; 
+        inputs.camera.mouseY = 0;
+
+        // Set a offset for the camera so the marble is rendered lower down
+        const yOffset = 1.5; 
+        const positionOffset = [
+          targetPosition[0],
+          targetPosition[1] + yOffset,
+          targetPosition[2]
+        ];
+        
+        const maxPitch = 1.55; // Slightly less than 90 degrees
+        this.pitch = Math.max(-maxPitch, Math.min(maxPitch, this.pitch));
+
+        const cosPitch = Math.cos(this.pitch);
+        const eye = [
+          positionOffset[0] + this.distance * cosPitch * Math.sin(this.azimuth),
+          positionOffset[1] + this.distance * Math.sin(this.pitch),
+          positionOffset[2] + this.distance * cosPitch * Math.cos(this.azimuth)
+        ];
+
+        const cameraMatrix = lookAt(eye, positionOffset, this.up);
+        this.viewMatrix = inverse(cameraMatrix);
+      }
+    }
 
 
     const canvas = document.getElementById("gl-canvas");
@@ -59,27 +142,101 @@
       return program;
     }
 
-    // ---- Column-major mat4 helpers ----
-    function translation(tx, ty, tz) { return new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, tx,ty,tz,1]); }
-    function rotationX(a) { const c=Math.cos(a),s=Math.sin(a); return new Float32Array([1,0,0,0, 0,c,s,0, 0,-s,c,0, 0,0,0,1]); }
-    function rotationY(a) { const c=Math.cos(a),s=Math.sin(a); return new Float32Array([c,0,-s,0, 0,1,0,0, s,0,c,0, 0,0,0,1]); }
+    // Column-major mat4 helpers
+    function translation(tx, ty, tz) { return new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tx, ty, tz, 1]); }
+    function rotationX(a) { const c = Math.cos(a), s = Math.sin(a); return new Float32Array([1, 0, 0, 0, 0, c, s, 0, 0, -s, c, 0, 0, 0, 0, 1]); }
+    function rotationY(a) { const c = Math.cos(a), s = Math.sin(a); return new Float32Array([c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1]); }
     function perspective(fovy, aspect, near, far) {
-      const f = 1/Math.tan(fovy/2), nf = 1/(near-far);
-      return new Float32Array([f/aspect,0,0,0, 0,f,0,0, 0,0,(far+near)*nf,-1, 0,0,2*far*near*nf,0]);
+      const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far);
+      return new Float32Array([f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, (far + near) * nf, -1, 0, 0, 2 * far * near * nf, 0]);
     }
     function multiply(a, b) {
       const out = new Float32Array(16);
-      for (let c=0;c<4;c++) for (let r=0;r<4;r++){ let s=0; for(let k=0;k<4;k++) s+=a[k*4+r]*b[c*4+k]; out[c*4+r]=s; }
+      for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) { let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k]; out[c * 4 + r] = s; }
       return out;
     }
 
-    
+
+    // Math herler from twgl 
+    // https://github.com/greggman/twgl.js/blob/main/src/m4.js
+    // Vector math helpers
+    function subtract(a, b) { return [a[0]-b[0], a[1]-b[1], a[2]-b[2]]; }
+    function cross(a, b) { return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
+    function normalize(a) { 
+      let len = Math.hypot(a[0], a[1], a[2]); 
+      return len > 0.00001 ? [a[0]/len, a[1]/len, a[2]/len] : [0,0,0]; 
+    }
+
+    // Builds the Camera Matrix (where the camera is in the world)
+    function lookAt(cameraPosition, target, up) {
+      const zAxis = normalize(subtract(cameraPosition, target));
+      const xAxis = normalize(cross(up, zAxis));
+      const yAxis = normalize(cross(zAxis, xAxis));
+
+      return new Float32Array([
+        xAxis[0], xAxis[1], xAxis[2], 0,
+        yAxis[0], yAxis[1], yAxis[2], 0,
+        zAxis[0], zAxis[1], zAxis[2], 0,
+        cameraPosition[0], cameraPosition[1], cameraPosition[2], 1,
+      ]);
+    }
+
+    // Inverts a matrix (turns a Camera Matrix into a View Matrix)
+    // References https://github.com/greggman/twgl.js/blob/main/src/m4.js 
+    function inverse(m, dst) {
+      const out = new Float32Array(16);
+      const m00 = m[0],  m01 = m[1],  m02 = m[2],  m03 = m[3];
+      const m10 = m[4],  m11 = m[5],  m12 = m[6],  m13 = m[7];
+      const m20 = m[8],  m21 = m[9],  m22 = m[10], m23 = m[11];
+      const m30 = m[12], m31 = m[13], m32 = m[14], m33 = m[15];
+
+      const tmp_0 = m22 * m33, tmp_1 = m32 * m23, tmp_2 = m12 * m33, tmp_3 = m32 * m13;
+      const tmp_4 = m12 * m23, tmp_5 = m22 * m13, tmp_6 = m02 * m33, tmp_7 = m32 * m03;
+      const tmp_8 = m02 * m23, tmp_9 = m22 * m03, tmp_10 = m02 * m13, tmp_11 = m12 * m03;
+      const tmp_12 = m20 * m31, tmp_13 = m30 * m21, tmp_14 = m10 * m31, tmp_15 = m30 * m11;
+      const tmp_16 = m10 * m21, tmp_17 = m20 * m11, tmp_18 = m00 * m31, tmp_19 = m30 * m01;
+      const tmp_20 = m00 * m21, tmp_21 = m20 * m01, tmp_22 = m00 * m11, tmp_23 = m10 * m01;
+
+      const t0 = (tmp_0 * m11 + tmp_3 * m21 + tmp_4 * m31) - (tmp_1 * m11 + tmp_2 * m21 + tmp_5 * m31);
+      const t1 = (tmp_1 * m01 + tmp_6 * m21 + tmp_9 * m31) - (tmp_0 * m01 + tmp_7 * m21 + tmp_8 * m31);
+      const t2 = (tmp_2 * m01 + tmp_7 * m11 + tmp_10 * m31) - (tmp_3 * m01 + tmp_6 * m11 + tmp_11 * m31);
+      const t3 = (tmp_5 * m01 + tmp_8 * m11 + tmp_11 * m21) - (tmp_4 * m01 + tmp_9 * m11 + tmp_10 * m21);
+
+      const d = 1.0 / (m00 * t0 + m10 * t1 + m20 * t2 + m30 * t3);
+
+      out[0] = d * t0; 
+      out[1] = d * t1; 
+      out[2] = d * t2; 
+      out[3] = d * t3;
+      out[4] = d * ((tmp_1 * m10 + tmp_2 * m20 + tmp_5 * m30) - (tmp_0 * m10 + tmp_3 * m20 + tmp_4 * m30));
+      out[5] = d * ((tmp_0 * m00 + tmp_7 * m20 + tmp_8 * m30) - (tmp_1 * m00 + tmp_6 * m20 + tmp_9 * m30));
+      out[6] = d * ((tmp_3 * m00 + tmp_6 * m10 + tmp_11 * m30) - (tmp_2 * m00 + tmp_7 * m10 + tmp_10 * m30));
+      out[7] = d * ((tmp_4 * m00 + tmp_9 * m10 + tmp_10 * m20) - (tmp_5 * m00 + tmp_8 * m10 + tmp_11 * m20));
+      out[8] = d * ((tmp_12 * m13 + tmp_15 * m23 + tmp_16 * m33) - (tmp_13 * m13 + tmp_14 * m23 + tmp_17 * m33));
+      out[9] = d * ((tmp_13 * m03 + tmp_18 * m23 + tmp_21 * m33) - (tmp_12 * m03 + tmp_19 * m23 + tmp_20 * m33));
+      out[10] = d * ((tmp_14 * m03 + tmp_19 * m13 + tmp_22 * m33) - (tmp_15 * m03 + tmp_18 * m13 + tmp_23 * m33));
+      out[11] = d * ((tmp_17 * m03 + tmp_20 * m13 + tmp_23 * m23) - (tmp_16 * m03 + tmp_21 * m13 + tmp_22 * m23));
+      out[12] = d * ((tmp_14 * m22 + tmp_17 * m32 + tmp_13 * m12) - (tmp_16 * m32 + tmp_12 * m12 + tmp_15 * m22));
+      out[13] = d * ((tmp_20 * m32 + tmp_12 * m02 + tmp_19 * m22) - (tmp_18 * m22 + tmp_21 * m32 + tmp_13 * m02));
+      out[14] = d * ((tmp_18 * m12 + tmp_23 * m32 + tmp_15 * m02) - (tmp_22 * m32 + tmp_14 * m02 + tmp_19 * m12));
+      out[15] = d * ((tmp_22 * m22 + tmp_16 * m02 + tmp_21 * m12) - (tmp_20 * m12 + tmp_23 * m22 + tmp_17 * m02));
+      return out;
+    }
+
+    function scaling(sx, sy, sz) {
+      return new Float32Array([
+        sx, 0,  0,  0,
+        0,  sy, 0,  0,
+        0,  0,  sz, 0,
+        0,  0,  0,  1
+      ]);
+    }
 
     const program = createProgram(gl, vertexSource, fragmentSource);
 
-  
-    const indiceBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, indiceBuffer);
+
+    const marbleIndiceBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, marbleIndiceBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, calculatedIndices, gl.STATIC_DRAW);
 
     const faceBuffer = gl.createBuffer();
@@ -91,12 +248,33 @@
     gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
     const uMVP = gl.getUniformLocation(program, "u_mvp");
 
-    gl.enable(gl.DEPTH_TEST); 
+  
+    const floorVertices = new Float32Array([
+      -1.0, 0.0, -1.0,
+      1.0, 0.0, -1.0,
+      -1.0, 0.0,  1.0,
+      1.0, 0.0,  1.0
+    ]);
+
+    const floorIndices = new Uint16Array([
+      0, 2, 1,
+      1, 2, 3
+    ]);
+
+    const floorVerticeBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, floorVerticeBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, floorVertices, gl.STATIC_DRAW);
+
+    const floorIndiceBf = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, floorIndiceBf);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, floorIndices, gl.STATIC_DRAW);
+
+    gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.CULL_FACE);
 
     const aspect = canvas.width / canvas.height;
-    const P = perspective(93 * Math.PI / 180, aspect, 0.1, 100);
-    const V = translation(0, 0, -3);
+    let P = perspective(93 * Math.PI / 180, aspect, 0.1, 100);
+    let V = translation(0, 0, -3);
     let VP = multiply(P, V);
 
     let angleX = 0.4, angleY = 0.6;
@@ -104,9 +282,10 @@
     let dragging = false, lastX = 0, lastY = 0;
     let autoSpin = true;
 
+    //TODO: Add camera movement controlled with arrow keys
     canvas.addEventListener("keydown", (e) => {
       if (e.key === " ") { autoSpin = !autoSpin; e.preventDefault(); return; }
-      if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)) {
+      if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
         keys[e.key] = true; e.preventDefault();
       }
     });
@@ -116,45 +295,64 @@
       dragging = true; lastX = e.clientX; lastY = e.clientY;
       canvas.setPointerCapture(e.pointerId);
     });
+
     canvas.addEventListener("pointermove", (e) => {
       if (!dragging) return;
-      angleY += (e.clientX - lastX) * 0.01;
-      angleX += (e.clientY - lastY) * 0.01;
-      lastX = e.clientX; lastY = e.clientY;
+      playerInputs.camera.mouseX += e.clientX - lastX;
+      playerInputs.camera.mouseY -= e.clientY - lastY;
+      lastX = e.clientX; 
+      lastY = e.clientY;
     });
+
     canvas.addEventListener("pointerup", () => { dragging = false; });
 
+    const mainCamera = new Camera(15);
 
     let last = 0;
     function frame(t) {
-      const dt = last ? (t - last) / 1000 : 0;
       last = t;
+
+      mainCamera.update(playerPosition, playerInputs);
 
       const dpr = window.devicePixelRatio || 1;
       const w = Math.round(canvas.clientWidth * dpr);
       const h = Math.round(canvas.clientHeight * dpr);
-      
-      if (canvas.width !== w || canvas.height !== h) { 
-        canvas.width = w; 
-        canvas.height = h; 
-        
-        const newAspect = canvas.width / canvas.height;
-        const newP = perspective(50 * Math.PI / 180, newAspect, 0.1, 100);
-        VP = multiply(newP, V); 
-      }
 
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        const newAspect = canvas.width / canvas.height;
+        P = perspective(50 * Math.PI / 180, newAspect, 0.1, 100);
+      }
+      
       gl.viewport(0, 0, canvas.width, canvas.height);
 
-      const a = t * 0.0008;
-      const M = multiply(rotationX(angleX), rotationY(angleY));
-      const mvp = multiply(VP, M);
-
-
-      gl.useProgram(program);
-      gl.uniformMatrix4fv(uMVP, false, mvp);
+      VP = multiply(P, mainCamera.viewMatrix);
 
       gl.clearColor(0.10, 0.10, 0.10, 1.0);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.useProgram(program);
+
+      // Draw the floor
+      gl.bindBuffer(gl.ARRAY_BUFFER, floorVerticeBuffer);
+      gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, floorIndiceBf);
+
+      const floorModel = multiply(translation(0, -1, 0), scaling(20, 1, 20));
+      const floorMVP = multiply(VP, floorModel);
+      
+      gl.uniformMatrix4fv(uMVP, false, floorMVP);
+      gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+
+      // Draw the marble
+      gl.bindBuffer(gl.ARRAY_BUFFER, marbleIndiceBuffer); 
+      gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, faceBuffer);
+
+      const M = translation(playerPosition[0], playerPosition[1], playerPosition[2]);
+      const mvp = multiply(VP, M);
+      
+      gl.uniformMatrix4fv(uMVP, false, mvp);
       gl.drawElements(gl.TRIANGLES, calculatedFaces.length, gl.UNSIGNED_SHORT, 0);
 
       requestAnimationFrame(frame);
@@ -162,4 +360,5 @@
     requestAnimationFrame(frame);
   </script>
 </body>
+
 </html>
