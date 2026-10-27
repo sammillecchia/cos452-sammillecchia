@@ -57,7 +57,7 @@ export class Platform {
 
 // Array of platform objects in the world
 export const levelPlatforms = [
-  new Platform(0, -2, 0, 20, 1, 20, "cube"), // Floor
-  new Platform(0, -1, -8, 20, 2, 4, "cube"),   // Top platform
-  new Platform(0, -1, -4, 20, 2, 4, "wedge") // Cool wedge 
+  new Platform(0, -2, 0, 80, 1, 20, "cube"), // Floor
+  new Platform(0, -1, -16, 80, 2, 20, "cube"), // Top platform
+  new Platform(0, -1, -4, 80, 2, 4, "wedge") // Cool wedge 
 ];

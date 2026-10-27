@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <title>Week 8 Starter -- Cube & Depth Testing</title>
+  <title>Marble - Capstone</title>
   <style>
     html,
     body {
@@ -27,8 +27,13 @@
     import { Platform, levelPlatforms, wedgeVertices, wedgeIndices, cubeVertices, cubeIndices } from './platform.js';
 
 
-    //player position in cartesian coordinates
-    let playerPosition = [0, 0, 0];
+    //Player data
+    let playerPosition = [0, 5, 0];
+    let playerVelocity = [0, 0, 0];
+    const marbleRadius = 1.0;
+
+    //TODO: Refactor these into playerInputs
+    let dragging = false, lastX = 0, lastY = 0;
 
     let playerInputs = {
       camera: {
@@ -48,26 +53,27 @@
       }
     }
 
-    // A class for handling moving the viewport and handling collision
+    // A class for handling moving the viewport
     class Camera {
-
       constructor(distance) {
         this.distance = distance;
-        this.azimuth = 0; //X rotation
-        this.elevation = 0;   //Y rotation
+        this.baseDistance = distance;
+        this.azimuth = 0;          //X rotation
+        this.elevation = 0;        //Y rotation
         this.up = [0, 1, 0];
         this.cameraMatrix = new Float32Array(16)
         this.viewMatrix = new Float32Array(16);
       }
 
-      // updates camara view position, takes a calculated target position and
+      // Updates camara view position, takes a calculated target position and
       // the playerInputs.camera object 
-      // heavily referenced webgl2 fundamentals for creating the camera system
+      // Heavily references webgl2 fundamentals for creating the camera system
       // https://webgl2fundamentals.org/webgl/lessons/webgl-visualizing-the-camera.html
       update(targetPosition, inputs) {
-        // TODO: ADD Camera Keyboard Controls
 
-        // Starting with just 0.01 but may want to have variable sensitivty
+        // TODO: Add collision detection so the camera doesnt clip through the floor (clamping/checking distance)
+
+        // Starting with just 0.01 but may want to change this to allow for variable sensitivty
         this.azimuth -= inputs.camera.mouseX * 0.01;
         this.elevation -= inputs.camera.mouseY * 0.005;
 
@@ -99,13 +105,11 @@
       }
     }
 
-
     const canvas = document.getElementById("gl-canvas");
     const gl = canvas.getContext("webgl2");
     if (!gl) {
       throw new Error("WebGL2 is not available on this device/browser.");
     }
-
 
     const vertexSource = `#version 300 es
     in vec3 a_position;
@@ -148,6 +152,7 @@
 
     const program = createProgram(gl, vertexSource, fragmentSource);
 
+    //Setup buffers for marble
     const marbleIndiceBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, marbleIndiceBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, calculatedIndices, gl.STATIC_DRAW);
@@ -161,15 +166,7 @@
     gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
     const uMVP = gl.getUniformLocation(program, "u_mvp");
 
-
-    const wedgeVerticeBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, wedgeVerticeBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, wedgeVertices, gl.STATIC_DRAW);
-
-    const wedgeIndiceBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, wedgeIndiceBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, wedgeIndices, gl.STATIC_DRAW);
-
+    //Setup buffers for cubes
     const cubeVerticeBuffer = gl.createBuffer();
 
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticeBuffer);
@@ -180,34 +177,38 @@
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeIndiceBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, cubeIndices, gl.STATIC_DRAW);
 
+    //Setup buffers for wedges
+    const wedgeVerticeBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, wedgeVerticeBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, wedgeVertices, gl.STATIC_DRAW);
+
+    const wedgeIndiceBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, wedgeIndiceBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, wedgeIndices, gl.STATIC_DRAW);
+
+
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.CULL_FACE);
 
+    
     const aspect = canvas.width / canvas.height;
     let P = perspective(93 * Math.PI / 180, aspect, 0.1, 100);
     let V = translation(0, 0, -3);
     let VP = multiply(P, V);
 
-    let angleX = 0.4, angleY = 0.6;
-    const keys = {};
-    let dragging = false, lastX = 0, lastY = 0;
-    let autoSpin = true;
 
-    //TODO: Add camera movement controlled with arrow keys
-    canvas.addEventListener("keydown", (e) => {
-      if (e.key === " ") { autoSpin = !autoSpin; e.preventDefault(); return; }
-      if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
-        keys[e.key] = true; e.preventDefault();
-      }
-    });
-    canvas.addEventListener("keyup", (e) => { keys[e.key] = false; });
-
-    canvas.addEventListener("pointerdown", (e) => {
+    // TODO: Add camera movement controlled with arrow keys
+    window.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
       dragging = true; lastX = e.clientX; lastY = e.clientY;
       canvas.setPointerCapture(e.pointerId);
     });
 
-    canvas.addEventListener("pointermove", (e) => {
+    window.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+    });
+
+    window.addEventListener("pointermove", (e) => {
       if (!dragging) return;
       playerInputs.camera.mouseX += e.clientX - lastX;
       playerInputs.camera.mouseY -= e.clientY - lastY;
@@ -215,17 +216,138 @@
       lastY = e.clientY;
     });
 
-    canvas.addEventListener("pointerup", () => { dragging = false; });
+    window.addEventListener("pointerup", () => { dragging = false; });
 
+    //Event listeners for movement
+    window.addEventListener("keydown", (e) => {
+      const key = e.key.toLowerCase();
+      if (["w", "a", "s", "d"].includes(key)) {
+        e.preventDefault();
+      }
+      if (key === "w") playerInputs.movement.keyForward = 1;
+      if (key === "s") playerInputs.movement.keyBack = 1;
+      if (key === "a") playerInputs.movement.keyLeft = 1;
+      if (key === "d") playerInputs.movement.keyRight = 1;
+      if (key === " ") playerInputs.movement.keyJump = 1;
+    });
+
+    window.addEventListener("keyup", (e) => {
+      const key = e.key.toLowerCase();
+      if (key === "w") playerInputs.movement.keyForward = 0;
+      if (key === "s") playerInputs.movement.keyBack = 0;
+      if (key === "a") playerInputs.movement.keyLeft = 0;
+      if (key === "d") playerInputs.movement.keyRight = 0;
+      if (key === " ") playerInputs.movement.keyJump = 0;
+    });
+
+    // Fixes movement keys becoming stuck when tabbing out
+    window.addEventListener("blur", () => {
+      playerInputs.movement.keyForward = 0;
+      playerInputs.movement.keyBack = 0;
+      playerInputs.movement.keyLeft = 0;
+      playerInputs.movement.keyRight = 0;
+      playerInputs.movement.keyJump = 0;
+      dragging = false; 
+    });
 
     const mainCamera = new Camera(15);
 
+    
     let last = 0;
     function frame(t) {
+      // Calculate delta time
+      const dt = last ? (t - last) / 1000 : 0.016; 
       last = t;
+      let isGrounded = false;
+
+      // Gravity
+      const gravity = -45.0;
+      playerVelocity[1] += gravity * dt;
+
+      // WASD movement (relative to camera)
+      const forwardX = -Math.sin(mainCamera.azimuth);
+      const forwardZ = -Math.cos(mainCamera.azimuth);
+      const rightX = Math.cos(mainCamera.azimuth);
+      const rightZ = -Math.sin(mainCamera.azimuth);
+
+      let moveX = 0;
+      let moveZ = 0;
+
+      if (playerInputs.movement.keyForward) { moveX += forwardX; moveZ += forwardZ; }
+      if (playerInputs.movement.keyBack) { moveX -= forwardX; moveZ -= forwardZ; }
+      if (playerInputs.movement.keyRight) { moveX += rightX; moveZ += rightZ; }
+      if (playerInputs.movement.keyLeft) { moveX -= rightX; moveZ -= rightZ; }
+
+      // Normalizing the direction, so diagonal movement isnt super fast
+      const moveLength = Math.hypot(moveX, moveZ);
+      if (moveLength > 0) {
+        moveX /= moveLength;
+        moveZ /= moveLength;
+
+        //Makes diagonal movement not completely locked to 1
+        if (moveLength > 1.0) {
+          const diagonalBoost = 1.15; 
+          moveX *= diagonalBoost;
+          moveZ *= diagonalBoost;
+        }
+      }
+
+      // Apply acceleration to velocity
+      const acceleration = 30.0; 
+      playerVelocity[0] += moveX * acceleration * dt;
+      playerVelocity[2] += moveZ * acceleration * dt;
+
+      // Friction
+      const friction = 8.0; 
+      if (isGrounded) {
+        playerVelocity[0] -= playerVelocity[0] * friction * dt;
+        playerVelocity[2] -= playerVelocity[2] * friction * dt;
+      } else {
+        playerVelocity[0] -= playerVelocity[0] * (friction * 0.2) * dt;
+        playerVelocity[2] -= playerVelocity[2] * (friction * 0.2) * dt;
+      }
+
+      let nextX = playerPosition[0] + playerVelocity[0] * dt;
+      let nextY = playerPosition[1] + playerVelocity[1] * dt;
+      let nextZ = playerPosition[2] + playerVelocity[2] * dt;
+
+      // Collision detection (currently only for the top of cube platforms)
+      // TODO: add some sort of chunking system as right now the collision detection is done
+      // for every single cube platform, which seems like it will become laggy with enough cubes
+      for (const platform of levelPlatforms) {
+        if (platform.shape === "cube") {
+
+          const minX = platform.position[0] - (platform.scale[0] / 2);
+          const maxX = platform.position[0] + (platform.scale[0] / 2);
+          const minY = platform.position[1] - (platform.scale[1] / 2);
+          const maxY = platform.position[1] + (platform.scale[1] / 2);
+          const minZ = platform.position[2] - (platform.scale[2] / 2);
+          const maxZ = platform.position[2] + (platform.scale[2] / 2);
+
+          const isAbovePlatform = (nextX + marbleRadius > minX && nextX - marbleRadius < maxX) &&
+            (nextZ + marbleRadius > minZ && nextZ - marbleRadius < maxZ);
+
+          if (isAbovePlatform) {
+            if (playerVelocity[1] < 0 && playerPosition[1] - marbleRadius >= maxY && nextY - marbleRadius < maxY) {
+              nextY = maxY + marbleRadius; 
+              playerVelocity[1] = 0;       
+              isGrounded = true;
+            }
+          }
+        }
+      }
+      
+      // Jumping
+      if (isGrounded && playerInputs.movement.keyJump) {
+        playerVelocity[1] = 18.0; 
+        isGrounded = false;
+      }
+
+      playerPosition = [nextX, nextY, nextZ];
 
       mainCamera.update(playerPosition, playerInputs);
 
+      // Resizing logic
       const dpr = window.devicePixelRatio || 1;
       const w = Math.round(canvas.clientWidth * dpr);
       const h = Math.round(canvas.clientHeight * dpr);
@@ -239,6 +361,7 @@
 
       gl.viewport(0, 0, canvas.width, canvas.height);
 
+      // Setup for drawing
       VP = multiply(P, mainCamera.viewMatrix);
 
       gl.clearColor(0.10, 0.10, 0.10, 1.0);
