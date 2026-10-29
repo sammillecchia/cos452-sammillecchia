@@ -18,11 +18,11 @@ export function multiply(a, b) {
 // Math helpers referenced from twgl 
 // https://github.com/greggman/twgl.js/blob/main/src/m4.js
 // Vector math helpers
-export function subtract(a, b) { return [a[0]-b[0], a[1]-b[1], a[2]-b[2]]; }
-export function cross(a, b) { return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
-export function normalize(a) { 
-    let len = Math.hypot(a[0], a[1], a[2]); 
-    return len > 0.00001 ? [a[0]/len, a[1]/len, a[2]/len] : [0,0,0]; 
+export function subtract(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+export function cross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+export function normalize(a) {
+    let len = Math.hypot(a[0], a[1], a[2]);
+    return len > 0.00001 ? [a[0] / len, a[1] / len, a[2] / len] : [0, 0, 0];
 }
 
 // Builds the Camera Matrix (where the camera is in the world)
@@ -32,19 +32,19 @@ export function lookAt(cameraPosition, target, up) {
     const yAxis = normalize(cross(zAxis, xAxis));
 
     return new Float32Array([
-    xAxis[0], xAxis[1], xAxis[2], 0,
-    yAxis[0], yAxis[1], yAxis[2], 0,
-    zAxis[0], zAxis[1], zAxis[2], 0,
-    cameraPosition[0], cameraPosition[1], cameraPosition[2], 1,
+        xAxis[0], xAxis[1], xAxis[2], 0,
+        yAxis[0], yAxis[1], yAxis[2], 0,
+        zAxis[0], zAxis[1], zAxis[2], 0,
+        cameraPosition[0], cameraPosition[1], cameraPosition[2], 1,
     ]);
 }
 
 // Inverts a matrix (turns a Camera Matrix into a View Matrix)
 // References https://github.com/greggman/twgl.js/blob/main/src/m4.js 
 export function inverse(m, dst) {
-    const m00 = m[0],  m01 = m[1],  m02 = m[2],  m03 = m[3];
-    const m10 = m[4],  m11 = m[5],  m12 = m[6],  m13 = m[7];
-    const m20 = m[8],  m21 = m[9],  m22 = m[10], m23 = m[11];
+    const m00 = m[0], m01 = m[1], m02 = m[2], m03 = m[3];
+    const m10 = m[4], m11 = m[5], m12 = m[6], m13 = m[7];
+    const m20 = m[8], m21 = m[9], m22 = m[10], m23 = m[11];
     const m30 = m[12], m31 = m[13], m32 = m[14], m33 = m[15];
 
     const tmp_0 = m22 * m33, tmp_1 = m32 * m23, tmp_2 = m12 * m33, tmp_3 = m32 * m13;
@@ -61,9 +61,9 @@ export function inverse(m, dst) {
 
     const d = 1.0 / (m00 * t0 + m10 * t1 + m20 * t2 + m30 * t3);
 
-    dst[0] = d * t0; 
-    dst[1] = d * t1; 
-    dst[2] = d * t2; 
+    dst[0] = d * t0;
+    dst[1] = d * t1;
+    dst[2] = d * t2;
     dst[3] = d * t3;
     dst[4] = d * ((tmp_1 * m10 + tmp_2 * m20 + tmp_5 * m30) - (tmp_0 * m10 + tmp_3 * m20 + tmp_4 * m30));
     dst[5] = d * ((tmp_0 * m00 + tmp_7 * m20 + tmp_8 * m30) - (tmp_1 * m00 + tmp_6 * m20 + tmp_9 * m30));
@@ -82,10 +82,10 @@ export function inverse(m, dst) {
 
 export function scaling(sx, sy, sz) {
     return new Float32Array([
-    sx, 0,  0,  0,
-    0,  sy, 0,  0,
-    0,  0,  sz, 0,
-    0,  0,  0,  1
+        sx, 0, 0, 0,
+        0, sy, 0, 0,
+        0, 0, sz, 0,
+        0, 0, 0, 1
     ]);
 }
 

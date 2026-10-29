@@ -40,11 +40,12 @@ export const wedgeIndices = new Uint16Array([
 
 // Class for creating platform objects that are placed in the world
 export class Platform {
-    //TODO: Add rotation, especially for cubes.
-  constructor(x, y, z, width, height, depth, shape="cube") {
+    //TODO: Add rotation, especially for WEDGES.
+  constructor(x, y, z, width, height, depth, shape="cube", rotX = 0, rotY = 0, rotZ = 0) {
     this.position = [x, y, z];
     this.scale = [width, height, depth];
     this.shape = shape;
+    this.rotation = [rotX, rotY, rotZ]; //TODO: Implement this
   }
 
   getMatrix() {
@@ -57,7 +58,18 @@ export class Platform {
 
 // Array of platform objects in the world
 export const levelPlatforms = [
-  new Platform(0, -2, 0, 80, 1, 20, "cube"), // Floor
-  new Platform(0, -1, -16, 80, 2, 20, "cube"), // Top platform
-  new Platform(0, -1, -4, 80, 2, 4, "wedge") // Cool wedge 
+  new Platform(0, 0, 0, 120, 1, 120, "cube"), // Floor
+  new Platform(0, 1, -11, 20, 2, 10, "cube"), // Top platform
+  new Platform(0, 1, -4, 20, 2, 4, "wedge"), // Cool wedge 
+  new Platform(-20, 3, -4, 10, 2400, 3000, "wedge"), // big wedge
+  new Platform(-35, 4, -4, 10, 8, 8, "wedge"), // 90 deg wedge
+  new Platform(0, 3, -25, 10, 2, 10, "cube"), // jump 1
+  new Platform(20, 4, -25, 10, 2, 10, "cube"), // jump 2
+  new Platform(40, 5, -25, 10, 2, 10, "cube"), // jump 3
+  new Platform(60, 6, -25, 10, 2, 10, "cube"), // jump 4
+  new Platform(60, 7, -5, 10, 2, 10, "cube"), // jump 5
+  new Platform(60, 8, 15, 10, 2, 10, "cube"), // jump 6
+  new Platform(45, 9, 35, 10, 2, 10, "cube"), // jump 7
+  new Platform(30, 10, 55, 10, 2, 10, "cube"), // jump 8
+  new Platform(15, 11, 60, 10, 2, 10, "cube"), // jump 9
 ];

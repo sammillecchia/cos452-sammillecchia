@@ -22,15 +22,14 @@
 <body>
   <canvas id="gl-canvas"></canvas>
   <script type="module">
+    import { Camera } from './camera.js'
     import { calculatedFaces, calculatedIndices } from './icosphere.js';
     import { lookAt, inverse, perspective, translation, multiply } from './math.js';
     import { Platform, levelPlatforms, wedgeVertices, wedgeIndices, cubeVertices, cubeIndices } from './platform.js';
+    import { player, updatePhysics } from './physics.js';
 
+    let renderDistance = 1000;
 
-    //Player data
-    let playerPosition = [0, 5, 0];
-    let playerVelocity = [0, 0, 0];
-    const marbleRadius = 1.0;
 
     //TODO: Refactor these into playerInputs
     let dragging = false, lastX = 0, lastY = 0;
@@ -50,58 +49,6 @@
         keyLeft: 0,
         keyRight: 0,
         keyJump: 0
-      }
-    }
-
-    // A class for handling moving the viewport
-    class Camera {
-      constructor(distance) {
-        this.distance = distance;
-        this.baseDistance = distance;
-        this.azimuth = 0;          //X rotation
-        this.elevation = 0;        //Y rotation
-        this.up = [0, 1, 0];
-        this.cameraMatrix = new Float32Array(16)
-        this.viewMatrix = new Float32Array(16);
-      }
-
-      // Updates camara view position, takes a calculated target position and
-      // the playerInputs.camera object 
-      // Heavily references webgl2 fundamentals for creating the camera system
-      // https://webgl2fundamentals.org/webgl/lessons/webgl-visualizing-the-camera.html
-      update(targetPosition, inputs) {
-
-        // TODO: Add collision detection so the camera doesnt clip through the floor (clamping/checking distance)
-
-        // Starting with just 0.01 but may want to change this to allow for variable sensitivty
-        this.azimuth -= inputs.camera.mouseX * 0.01;
-        this.elevation -= inputs.camera.mouseY * 0.005;
-
-        // Reset camera 
-        inputs.camera.mouseX = 0;
-        inputs.camera.mouseY = 0;
-
-        // Set a offset for the camera so the marble is rendered lower down
-        const yOffset = 1.5;
-        const positionOffset = [
-          targetPosition[0],
-          targetPosition[1] + yOffset,
-          targetPosition[2]
-        ];
-
-        // Clamping so camera cant move over the top of the marble
-        const maxPitch = 1.56; // Slightly less than 90 degrees
-        this.elevation = Math.max(-maxPitch, Math.min(maxPitch, this.elevation));
-
-        const cosElevation = Math.cos(this.elevation);
-        const eye = [
-          positionOffset[0] + this.distance * cosElevation * Math.sin(this.azimuth),
-          positionOffset[1] + this.distance * Math.sin(this.elevation),
-          positionOffset[2] + this.distance * cosElevation * Math.cos(this.azimuth)
-        ];
-
-        const cameraMatrix = lookAt(eye, positionOffset, this.up);
-        this.viewMatrix = inverse(cameraMatrix, cameraMatrix);
       }
     }
 
@@ -149,7 +96,6 @@
       return program;
     }
 
-
     const program = createProgram(gl, vertexSource, fragmentSource);
 
     //Setup buffers for marble
@@ -186,16 +132,13 @@
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, wedgeIndiceBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, wedgeIndices, gl.STATIC_DRAW);
 
-
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.CULL_FACE);
 
-    
     const aspect = canvas.width / canvas.height;
-    let P = perspective(93 * Math.PI / 180, aspect, 0.1, 100);
+    let P = perspective(93 * Math.PI / 180, aspect, 0.1, renderDistance);
     let V = translation(0, 0, -3);
     let VP = multiply(P, V);
-
 
     // TODO: Add camera movement controlled with arrow keys
     window.addEventListener("pointerdown", (e) => {
@@ -247,105 +190,27 @@
       playerInputs.movement.keyLeft = 0;
       playerInputs.movement.keyRight = 0;
       playerInputs.movement.keyJump = 0;
-      dragging = false; 
+      dragging = false;
     });
 
     const mainCamera = new Camera(15);
 
-    
     let last = 0;
     function frame(t) {
       // Calculate delta time
-      const dt = last ? (t - last) / 1000 : 0.016; 
+      let dt = last ? (t - last) / 1000 : 0.016;
       last = t;
-      let isGrounded = false;
 
-      // Gravity
-      const gravity = -45.0;
-      playerVelocity[1] += gravity * dt;
+      // Bounding dt to at most 0.1 to prevent lag spikes and tabbing out having unitended
+      // behaviour on gameplay. Some examples of this are: Having incredibly high gravity 
+      // applied, having incredibly high acceleration applied, friction not stopping, just
+      // clipping through the floor into the endless void, you get the idea.
+      if (dt > 0.1) dt = 0.1;
 
-      // WASD movement (relative to camera)
-      const forwardX = -Math.sin(mainCamera.azimuth);
-      const forwardZ = -Math.cos(mainCamera.azimuth);
-      const rightX = Math.cos(mainCamera.azimuth);
-      const rightZ = -Math.sin(mainCamera.azimuth);
+      updatePhysics(dt, mainCamera, playerInputs, levelPlatforms);
 
-      let moveX = 0;
-      let moveZ = 0;
-
-      if (playerInputs.movement.keyForward) { moveX += forwardX; moveZ += forwardZ; }
-      if (playerInputs.movement.keyBack) { moveX -= forwardX; moveZ -= forwardZ; }
-      if (playerInputs.movement.keyRight) { moveX += rightX; moveZ += rightZ; }
-      if (playerInputs.movement.keyLeft) { moveX -= rightX; moveZ -= rightZ; }
-
-      // Normalizing the direction, so diagonal movement isnt super fast
-      const moveLength = Math.hypot(moveX, moveZ);
-      if (moveLength > 0) {
-        moveX /= moveLength;
-        moveZ /= moveLength;
-
-        //Makes diagonal movement not completely locked to 1
-        if (moveLength > 1.0) {
-          const diagonalBoost = 1.15; 
-          moveX *= diagonalBoost;
-          moveZ *= diagonalBoost;
-        }
-      }
-
-      // Apply acceleration to velocity
-      const acceleration = 30.0; 
-      playerVelocity[0] += moveX * acceleration * dt;
-      playerVelocity[2] += moveZ * acceleration * dt;
-
-      // Friction
-      const friction = 8.0; 
-      if (isGrounded) {
-        playerVelocity[0] -= playerVelocity[0] * friction * dt;
-        playerVelocity[2] -= playerVelocity[2] * friction * dt;
-      } else {
-        playerVelocity[0] -= playerVelocity[0] * (friction * 0.2) * dt;
-        playerVelocity[2] -= playerVelocity[2] * (friction * 0.2) * dt;
-      }
-
-      let nextX = playerPosition[0] + playerVelocity[0] * dt;
-      let nextY = playerPosition[1] + playerVelocity[1] * dt;
-      let nextZ = playerPosition[2] + playerVelocity[2] * dt;
-
-      // Collision detection (currently only for the top of cube platforms)
-      // TODO: add some sort of chunking system as right now the collision detection is done
-      // for every single cube platform, which seems like it will become laggy with enough cubes
-      for (const platform of levelPlatforms) {
-        if (platform.shape === "cube") {
-
-          const minX = platform.position[0] - (platform.scale[0] / 2);
-          const maxX = platform.position[0] + (platform.scale[0] / 2);
-          const minY = platform.position[1] - (platform.scale[1] / 2);
-          const maxY = platform.position[1] + (platform.scale[1] / 2);
-          const minZ = platform.position[2] - (platform.scale[2] / 2);
-          const maxZ = platform.position[2] + (platform.scale[2] / 2);
-
-          const isAbovePlatform = (nextX + marbleRadius > minX && nextX - marbleRadius < maxX) &&
-            (nextZ + marbleRadius > minZ && nextZ - marbleRadius < maxZ);
-
-          if (isAbovePlatform) {
-            if (playerVelocity[1] < 0 && playerPosition[1] - marbleRadius >= maxY && nextY - marbleRadius < maxY) {
-              nextY = maxY + marbleRadius; 
-              playerVelocity[1] = 0;       
-              isGrounded = true;
-            }
-          }
-        }
-      }
-      
-      // Jumping
-      if (isGrounded && playerInputs.movement.keyJump) {
-        playerVelocity[1] = 18.0; 
-        isGrounded = false;
-      }
-
-      playerPosition = [nextX, nextY, nextZ];
-
-      mainCamera.update(playerPosition, playerInputs);
+      // Update the camera with updated positions
+      mainCamera.update(player.position, playerInputs);
 
       // Resizing logic
       const dpr = window.devicePixelRatio || 1;
@@ -356,7 +221,7 @@
         canvas.width = w;
         canvas.height = h;
         const newAspect = canvas.width / canvas.height;
-        P = perspective(50 * Math.PI / 180, newAspect, 0.1, 100);
+        P = perspective(50 * Math.PI / 180, newAspect, 0.1, renderDistance);
       }
 
       gl.viewport(0, 0, canvas.width, canvas.height);
@@ -392,7 +257,7 @@
       gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, marbleFaceBuffer);
 
-      const M = translation(playerPosition[0], playerPosition[1], playerPosition[2]);
+      const M = translation(player.position[0], player.position[1], player.position[2]);
       const mvp = multiply(VP, M);
 
       gl.uniformMatrix4fv(uMVP, false, mvp);
