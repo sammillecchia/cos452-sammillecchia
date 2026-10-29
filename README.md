@@ -25,12 +25,14 @@ Labs:
 
 [Week 08](https://sammillecchia.github.io/cos452-sammillecchia/week08/) | [Week 08 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week08/stretch.html) |
 
-(not commited below)
-
 [Week 09](https://sammillecchia.github.io/cos452-sammillecchia/week09/) | [Week 09 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week09/stretch.html) |
 
+(not commited below)
+
+[Week 10](https://sammillecchia.github.io/cos452-sammillecchia/week10/) | [Week 10 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week10/stretch.html) |
 
 Extras:
+
 [Capstone](https://sammillecchia.github.io/cos452-sammillecchia/capstone)
 
 [2D Game of Life](https://sammillecchia.github.io/cos452-sammillecchia/extras/2dGOL.html) 
