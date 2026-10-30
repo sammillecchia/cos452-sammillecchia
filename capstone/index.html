@@ -24,7 +24,7 @@
   <script type="module">
     import { Camera } from './camera.js'
     import { calculatedFaces, calculatedIndices } from './icosphere.js';
-    import { lookAt, inverse, perspective, translation, multiply } from './math.js';
+    import { lookAt, inverse, perspective, translation, multiply, identity, axisRotation } from './math.js';
     import { Platform, levelPlatforms, wedgeVertices, wedgeIndices, cubeVertices, cubeIndices } from './platform.js';
     import { player, updatePhysics } from './physics.js';
 
@@ -242,6 +242,9 @@
 
     const mainCamera = new Camera(15);
 
+    const dRotation = new Float32Array(16);
+    let marbleRotation = identity();
+
     let last = 0;
     function frame(t) {
       // Calculate delta time
@@ -295,11 +298,31 @@
       // Bind marble VAO
       gl.bindVertexArray(marbleVAO);
 
-      const M = translation(player.position[0], player.position[1], player.position[2]);
-      const mvp = multiply(VP, M);
+      // Calculate distance moved
+      const dx = player.position[0] - player.lastPosition[0];
+      const dz = player.position[2] - player.lastPosition[2];
+      const distance = Math.hypot(dx, dz);
 
+      // Calculate axis-angle rotation
+      if (distance > 0.0001) {
+        const axis = [dz, 0, -dx]; 
+        const angle = distance / player.radius; 
+        axisRotation(angle, axis, dRotation);
+        marbleRotation = multiply(dRotation, marbleRotation);
+      }
+      
+
+      player.lastPosition = [...player.position];
+
+      //
+      const T = translation(player.position[0], player.position[1], player.position[2]);
+      const M = multiply(T, marbleRotation); 
+      
+      const mvp = multiply(VP, M);
       gl.uniformMatrix4fv(uMVP, false, mvp);
       gl.drawElements(gl.TRIANGLES, calculatedFaces.length, gl.UNSIGNED_SHORT, 0);
+
+      gl.bindVertexArray(null);
 
       requestAnimationFrame(frame);
     }

@@ -33,7 +33,7 @@ Labs:
 
 Extras:
 
-[Capstone](https://sammillecchia.github.io/cos452-sammillecchia/capstone)
+[Marble - Capstone](https://sammillecchia.github.io/cos452-sammillecchia/capstone)
 
 [2D Game of Life](https://sammillecchia.github.io/cos452-sammillecchia/extras/2dGOL.html) 
 

@@ -1,6 +1,7 @@
 // File for handling player physics
 export const player = {
     position: [0, 5, 0],
+    lastPosition: [0, 5, 0],
     velocity: [0, 0, 0],
     radius: 1.0,
     isGrounded: false

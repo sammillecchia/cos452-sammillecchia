@@ -2,6 +2,7 @@
 
 
 // Column-major mat4 helpers, taken from the labs
+export function identity() { return new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]); }
 export function translation(tx, ty, tz) { return new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tx, ty, tz, 1]); }
 export function rotationX(a) { const c = Math.cos(a), s = Math.sin(a); return new Float32Array([1, 0, 0, 0, 0, c, s, 0, 0, -s, c, 0, 0, 0, 0, 1]); }
 export function rotationY(a) { const c = Math.cos(a), s = Math.sin(a); return new Float32Array([c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1]); }
@@ -89,3 +90,46 @@ export function scaling(sx, sy, sz) {
     ]);
 }
 
+// Referencing this video by Jorge Rodriguez for the axis-rotation vector math
+// as well as twgl for applying it to a mat4 
+// https://www.youtube.com/watch?v=dttFiVn0rvc
+// https://github.com/greggman/twgl.js/blob/main/src/m4.js#L1057
+export function axisRotation(angle, axis, dst) {
+    dst = dst || new Float32Array(16)
+
+    const newAxis = normalize(axis);
+    const x = newAxis[0], y = newAxis[1], z = newAxis[2];
+
+
+    if (x === 0 && y === 0 && z === 0) {
+        dst[0] = 1; dst[1] = 0; dst[2] = 0; dst[3] = 0;
+        dst[4] = 0; dst[5] = 1; dst[6] = 0; dst[7] = 0;
+        dst[8] = 0; dst[9] = 0; dst[10] = 1; dst[11] = 0;
+        dst[12] = 0; dst[13] = 0; dst[14] = 0; dst[15] = 1;
+
+        return dst;
+    }
+
+    const c = Math.cos(angle);
+    const s = Math.sin(angle);
+    const ci = 1 - c;
+
+    dst[0] = ci * x * x + c;
+    dst[1] = ci * x * y + s * z;
+    dst[2] = ci * x * z - s * y;
+    dst[3] = 0;
+    dst[4] = ci * x * y - s * z;
+    dst[5] = ci * y * y + c;
+    dst[6] = ci * y * z + s * x;
+    dst[7] = 0;
+    dst[8] = ci * x * z + s * y;
+    dst[9] = ci * y * z - s * x;
+    dst[10] = ci * z * z + c;
+    dst[11] = 0;
+    dst[12] = 0;
+    dst[13] = 0;
+    dst[14] = 0;
+    dst[15] = 1;
+
+    return dst;
+}
