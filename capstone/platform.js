@@ -4,48 +4,70 @@ import { translation, scaling, multiply } from "./math.js";
 
 // Cube
 export const cubeVertices = new Float32Array([
-    -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, 0.5, 0.5, 0.5, -0.5, 0.5, 0.5,
-    -0.5, -0.5, -0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5,
-    -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, -0.5,
-    -0.5, -0.5, -0.5, 0.5, -0.5, -0.5, 0.5, -0.5, 0.5, -0.5, -0.5, 0.5,
-    0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, 0.5, 0.5, 0.5, -0.5, 0.5,
-    -0.5, -0.5, -0.5, -0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5
+  -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, 0.5, 0.5, 0.5, -0.5, 0.5, 0.5,
+  -0.5, -0.5, -0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5,
+  -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, -0.5,
+  -0.5, -0.5, -0.5, 0.5, -0.5, -0.5, 0.5, -0.5, 0.5, -0.5, -0.5, 0.5,
+  0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, 0.5, 0.5, 0.5, -0.5, 0.5,
+  -0.5, -0.5, -0.5, -0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5
 ]);
-
 export const cubeIndices = new Uint16Array([
-    0, 1, 2, 0, 2, 3,    // front
-    4, 5, 6, 4, 6, 7,    // back
-    8, 9, 10, 8, 10, 11,   // top
-    12, 13, 14, 12, 14, 15,   // bottom
-    16, 17, 18, 16, 18, 19,   // right
-    20, 21, 22, 20, 22, 23    // left
+  0, 1, 2, 0, 2, 3,    // front
+  4, 5, 6, 4, 6, 7,    // back
+  8, 9, 10, 8, 10, 11,   // top
+  12, 13, 14, 12, 14, 15,   // bottom
+  16, 17, 18, 16, 18, 19,   // right
+  20, 21, 22, 20, 22, 23    // left
 ]);
 
 //Wedge
 export const wedgeVertices = new Float32Array([
-    -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, 0.5, 0.5, -0.5, -0.5, 0.5, -0.5,
-    -0.5, -0.5, -0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5,
-    -0.5, -0.5, -0.5, 0.5, -0.5, -0.5, 0.5, -0.5, 0.5, -0.5, -0.5, 0.5,
-    -0.5, -0.5, -0.5, -0.5, -0.5, 0.5, -0.5, 0.5, -0.5,
-    0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, 0.5
+  -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, 0.5, 0.5, -0.5, -0.5, 0.5, -0.5,
+  -0.5, -0.5, -0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5,
+  -0.5, -0.5, -0.5, 0.5, -0.5, -0.5, 0.5, -0.5, 0.5, -0.5, -0.5, 0.5,
+  -0.5, -0.5, -0.5, -0.5, -0.5, 0.5, -0.5, 0.5, -0.5,
+  0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, 0.5
+]);
+export const wedgeIndices = new Uint16Array([
+  0, 1, 2, 0, 2, 3,    // top
+  4, 6, 7, 4, 5, 6,    // back 
+  8, 11, 10, 8, 10, 9, // bottom
+  12, 13, 14,          // left 
+  15, 16, 17           // right 
 ]);
 
-export const wedgeIndices = new Uint16Array([
-    0, 1, 2, 0, 2, 3,    // top
-    4, 6, 7, 4, 5, 6,    // back 
-    8, 11, 10, 8, 10, 9, // bottom
-    12, 13, 14,          // left 
-    15, 16, 17           // right 
-]);
 
 // Class for creating platform objects that are placed in the world
 export class Platform {
-    //TODO: Add rotation, especially for WEDGES.
-  constructor(x, y, z, width, height, depth, shape="cube", rotX = 0, rotY = 0, rotZ = 0) {
+  //TODO: Add rotation, especially for WEDGES.
+  constructor(x, y, z, width, height, depth, shape = "cube", rotX = 0, rotY = 0, rotZ = 0) {
     this.position = [x, y, z];
     this.scale = [width, height, depth];
     this.shape = shape;
     this.rotation = [rotX, rotY, rotZ]; //TODO: Implement this
+
+    // create scaled UVs
+    if (shape === "cube") {
+      if (shape === "cube") {
+        this.uvs = new Float32Array([
+          0, 0, width, 0, width, height, 0, height, // front
+          width, 0, width, height, 0, height, 0, 0, // back
+          0, depth, 0, 0, width, 0, width, depth, // top
+          0, depth, width, depth, width, 0, 0, 0, // bottom
+          depth, 0, depth, height, 0, height, 0, 0, // right
+          0, 0, depth, 0, depth, height, 0, height // left
+        ]);
+      }
+    }
+    else if (shape === "wedge") {
+      this.uvs = new Float32Array([
+        0, 0, width, 0, width, depth, 0, depth, // top 
+        0, 0, 0, height, width, height, width, 0,     // back 
+        0, 0, width, 0, width, depth, 0, depth,       // bottom 
+        0, 0, depth, 0, 0, height,                   // left 
+        depth, 0, depth, height, 0, 0                // right 
+      ]);
+    }
   }
 
   getMatrix() {

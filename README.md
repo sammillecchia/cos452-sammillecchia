@@ -19,17 +19,17 @@ Labs:
 
 [Week 05](https://sammillecchia.github.io/cos452-sammillecchia/week05/) | [Week 05 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week05/stretch.html) | [Week 05 Texture Experiment](https://sammillecchia.github.io/cos452-sammillecchia/week05/textureTest.html)
 
-[Week 06](https://sammillecchia.github.io/cos452-sammillecchia/week06/) | [Week 06 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week06/stretch.html) | 
+[Week 06](https://sammillecchia.github.io/cos452-sammillecchia/week06/) | [Week 06 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week06/stretch.html) 
 
-[Week 07](https://sammillecchia.github.io/cos452-sammillecchia/week07/) | [Week 07 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week07/stretch.html) | 
+[Week 07](https://sammillecchia.github.io/cos452-sammillecchia/week07/) | [Week 07 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week07/stretch.html) 
 
-[Week 08](https://sammillecchia.github.io/cos452-sammillecchia/week08/) | [Week 08 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week08/stretch.html) |
+[Week 08](https://sammillecchia.github.io/cos452-sammillecchia/week08/) | [Week 08 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week08/stretch.html) 
 
-[Week 09](https://sammillecchia.github.io/cos452-sammillecchia/week09/) | [Week 09 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week09/stretch.html) |
+[Week 09](https://sammillecchia.github.io/cos452-sammillecchia/week09/) | [Week 09 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week09/stretch.html) 
 
 (not commited below)
 
-[Week 10](https://sammillecchia.github.io/cos452-sammillecchia/week10/) | [Week 10 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week10/stretch.html) |
+[Week 10](https://sammillecchia.github.io/cos452-sammillecchia/week10/) | [Week 10 Stretch Goal](https://sammillecchia.github.io/cos452-sammillecchia/week10/stretch.html) 
 
 Extras:
 

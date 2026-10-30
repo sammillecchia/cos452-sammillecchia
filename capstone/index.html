@@ -30,7 +30,6 @@
 
     let renderDistance = 1000;
 
-
     //TODO: Refactor these into playerInputs
     let dragging = false, lastX = 0, lastY = 0;
 
@@ -60,20 +59,23 @@
 
     const vertexSource = `#version 300 es
     in vec3 a_position;
+    in vec2 a_uv;
     uniform mat4 u_mvp;
-    out vec3 v_color; 
+    out vec2 v_uv;
+
     void main() {
         gl_Position = u_mvp * vec4(a_position, 1.0);
-        // Convert -1 to 1 range into 0 to 1 range for colors
-        v_color = a_position * 0.5 + 0.5; 
+        v_uv = a_uv; 
     }`;
 
     const fragmentSource = `#version 300 es
     precision mediump float;
-    in vec3 v_color;
+    in vec2 v_uv;
     out vec4 outColor;
+    uniform sampler2D u_texture;
+
     void main() { 
-        outColor = vec4(v_color, 1.0);  
+        outColor = texture(u_texture, v_uv); 
     }`;
 
     function createShader(gl, type, source) {
@@ -96,41 +98,53 @@
       return program;
     }
 
+    // Helper to create and bind buffers
+    function createBuffer(data, bufferType) {
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(bufferType, buffer);
+      gl.bufferData(bufferType, data, gl.STATIC_DRAW);
+      return buffer;
+    }
+
     const program = createProgram(gl, vertexSource, fragmentSource);
 
-    //Setup buffers for marble
-    const marbleIndiceBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, marbleIndiceBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, calculatedIndices, gl.STATIC_DRAW);
-
-    const marbleFaceBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, marbleFaceBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, calculatedFaces, gl.STATIC_DRAW);
-
     const aPosition = gl.getAttribLocation(program, "a_position");
-    gl.enableVertexAttribArray(aPosition);
-    gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
+    const aUV = gl.getAttribLocation(program, "a_uv");
     const uMVP = gl.getUniformLocation(program, "u_mvp");
+    gl.enableVertexAttribArray(aUV);
+    gl.enableVertexAttribArray(aPosition);
+
+    // Creating a simple checkerboard texture for testing
+    const checkerboardTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, checkerboardTexture);
+
+    const checkerboard = new Uint8Array([
+      200, 200, 200, 255, 100, 100, 100, 255,
+      100, 100, 100, 255, 200, 200, 200, 255
+    ]);
+
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 2, 2, 0, gl.RGBA, gl.UNSIGNED_BYTE, checkerboard);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+
+    //Setup buffers for marble
+    const marbleIndiceBuffer = createBuffer(calculatedIndices, gl.ARRAY_BUFFER);
+    const marbleFaceBuffer = createBuffer(calculatedFaces, gl.ELEMENT_ARRAY_BUFFER);
 
     //Setup buffers for cubes
-    const cubeVerticeBuffer = gl.createBuffer();
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticeBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, cubeVertices, gl.STATIC_DRAW);
-
-    const cubeIndiceBuffer = gl.createBuffer();
-
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeIndiceBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, cubeIndices, gl.STATIC_DRAW);
+    const cubeVerticeBuffer = createBuffer(cubeVertices, gl.ARRAY_BUFFER);
+    const cubeIndiceBuffer = createBuffer(cubeIndices, gl.ELEMENT_ARRAY_BUFFER);
 
     //Setup buffers for wedges
-    const wedgeVerticeBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, wedgeVerticeBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, wedgeVertices, gl.STATIC_DRAW);
+    const wedgeVerticeBuffer = createBuffer(wedgeVertices, gl.ARRAY_BUFFER);
+    const wedgeIndiceBuffer = createBuffer(wedgeIndices, gl.ELEMENT_ARRAY_BUFFER);
 
-    const wedgeIndiceBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, wedgeIndiceBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, wedgeIndices, gl.STATIC_DRAW);
+    // Setup platform UV buffers
+    for (const platform of levelPlatforms) {
+      platform.uvBuffer = createBuffer(platform.uvs, gl.ARRAY_BUFFER);
+    }
 
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.CULL_FACE);
@@ -161,7 +175,7 @@
 
     window.addEventListener("pointerup", () => { dragging = false; });
 
-    //Event listeners for movement
+    // Event listeners for movement
     window.addEventListener("keydown", (e) => {
       const key = e.key.toLowerCase();
       if (["w", "a", "s", "d"].includes(key)) {
@@ -239,11 +253,16 @@
           gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticeBuffer);
           gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
           gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeIndiceBuffer);
-        } else if (platform.shape === "wedge") {
+        }
+        else if (platform.shape === "wedge") {
           gl.bindBuffer(gl.ARRAY_BUFFER, wedgeVerticeBuffer);
           gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
           gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, wedgeIndiceBuffer);
         }
+
+        // Bind platform UVs
+        gl.bindBuffer(gl.ARRAY_BUFFER, platform.uvBuffer);
+        gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 0, 0);
 
         const platformMVP = multiply(VP, platform.getMatrix());
         gl.uniformMatrix4fv(uMVP, false, platformMVP);
@@ -252,9 +271,13 @@
         gl.drawElements(gl.TRIANGLES, indexCount, gl.UNSIGNED_SHORT, 0);
       }
 
-      // Draw the marble
+      // Draw the Marble
       gl.bindBuffer(gl.ARRAY_BUFFER, marbleIndiceBuffer);
       gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
+
+      // Using the vertice data as UVs, creates a really interesting design (totally intentional btw)
+      gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 0, 0);
+
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, marbleFaceBuffer);
 
       const M = translation(player.position[0], player.position[1], player.position[2]);
@@ -265,6 +288,7 @@
 
       requestAnimationFrame(frame);
     }
+
     requestAnimationFrame(frame);
   </script>
 </body>
