@@ -45,7 +45,7 @@ export class Platform {
     this.scale = [width, height, depth];
     this.shape = shape;
     this.rotation = [rotX, rotY, rotZ]; //TODO: Implement this
-
+    
     // create scaled UVs
     if (shape === "cube") {
       if (shape === "cube") {

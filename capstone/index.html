@@ -106,6 +106,25 @@
       return buffer;
     }
 
+    // Helper to create VAOs 
+    function createVAO(vertexBuffer, uvBuffer, indexBuffer) {
+      const vao = gl.createVertexArray();
+      gl.bindVertexArray(vao);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+      gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(aPosition);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
+      gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(aUV);
+
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+
+      gl.bindVertexArray(null); 
+      return vao;
+    }
+
     const program = createProgram(gl, vertexSource, fragmentSource);
 
     const aPosition = gl.getAttribLocation(program, "a_position");
@@ -129,6 +148,7 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
 
+    
     //Setup buffers for marble
     const marbleIndiceBuffer = createBuffer(calculatedIndices, gl.ARRAY_BUFFER);
     const marbleFaceBuffer = createBuffer(calculatedFaces, gl.ELEMENT_ARRAY_BUFFER);
@@ -145,6 +165,19 @@
     for (const platform of levelPlatforms) {
       platform.uvBuffer = createBuffer(platform.uvs, gl.ARRAY_BUFFER);
     }
+
+    // https://webgl2fundamentals.org/webgl/lessons/webgl-attributes.html
+
+    // Setup VAOs for platforms
+    for (const platform of levelPlatforms) {
+      const vertexBuffer = platform.shape === "cube" ? cubeVerticeBuffer : wedgeVerticeBuffer;
+      const indiceBuffer = platform.shape === "cube" ? cubeIndiceBuffer : wedgeIndiceBuffer;
+      
+      platform.vao = createVAO(vertexBuffer, platform.uvBuffer, indiceBuffer);
+    }
+
+    // Setup VAO for marble
+    const marbleVAO = createVAO(marbleIndiceBuffer, marbleIndiceBuffer, marbleFaceBuffer);
 
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.CULL_FACE);
@@ -221,6 +254,7 @@
       // clipping through the floor into the endless void, you get the idea.
       if (dt > 0.1) dt = 0.1;
 
+      // Do physics
       updatePhysics(dt, mainCamera, playerInputs, levelPlatforms);
 
       // Update the camera with updated positions
@@ -247,38 +281,19 @@
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       gl.useProgram(program);
 
-      // Draw Platforms (wedges and cubes)
+      // Bind platform VAOs
       for (const platform of levelPlatforms) {
-        if (platform.shape === "cube") {
-          gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticeBuffer);
-          gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
-          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeIndiceBuffer);
-        }
-        else if (platform.shape === "wedge") {
-          gl.bindBuffer(gl.ARRAY_BUFFER, wedgeVerticeBuffer);
-          gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
-          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, wedgeIndiceBuffer);
-        }
-
-        // Bind platform UVs
-        gl.bindBuffer(gl.ARRAY_BUFFER, platform.uvBuffer);
-        gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 0, 0);
+        gl.bindVertexArray(platform.vao);
 
         const platformMVP = multiply(VP, platform.getMatrix());
         gl.uniformMatrix4fv(uMVP, false, platformMVP);
-
+        
         const indexCount = platform.shape === "cube" ? 36 : 24;
         gl.drawElements(gl.TRIANGLES, indexCount, gl.UNSIGNED_SHORT, 0);
       }
 
-      // Draw the Marble
-      gl.bindBuffer(gl.ARRAY_BUFFER, marbleIndiceBuffer);
-      gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
-
-      // Using the vertice data as UVs, creates a really interesting design (totally intentional btw)
-      gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 0, 0);
-
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, marbleFaceBuffer);
+      // Bind marble VAO
+      gl.bindVertexArray(marbleVAO);
 
       const M = translation(player.position[0], player.position[1], player.position[2]);
       const mvp = multiply(VP, M);

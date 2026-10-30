@@ -179,7 +179,7 @@ export function updatePhysics(dt, camera, playerInputs, platforms) {
     }
 
      // Check to reset position if you have fallen into the void
-    if (player.position[1] < -20.0) {
+    if (player.position[1] < -100.0) {
         player.position = [0, 5, 0];
         player.velocity = [0, 0, 0];
     }
