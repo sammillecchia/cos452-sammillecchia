@@ -21,8 +21,8 @@ export class Camera {
         // TODO: Add collision detection so the camera doesnt clip through the floor (clamping/checking distance)
 
         // Starting with just 0.01 but may want to change this to allow for variable sensitivty
-        this.azimuth -= inputs.camera.mouseX * 0.01;
-        this.elevation -= inputs.camera.mouseY * 0.005;
+        this.azimuth -= inputs.camera.mouseX * 0.005;
+        this.elevation -= inputs.camera.mouseY * 0.0025;
 
         // Reset camera 
         inputs.camera.mouseX = 0;

@@ -4,13 +4,15 @@ export const player = {
     lastPosition: [0, 5, 0],
     velocity: [0, 0, 0],
     radius: 1.0,
-    isGrounded: false
+    isGrounded: false,
+    connectedPlatform: null,
+    platformDelta: [0, 0, 0]
 };
 
 // Helper function for clamping 
-function clampToEdge(lineStart, lineEnd) {
+function clampToEdge(lineStart, lineEnd, playerY, playerZ) {
     const lineVector = [lineEnd[0] - lineStart[0], lineEnd[1] - lineStart[1]];
-    const pointVector = [player.position[1] - lineStart[0], player.position[2] - lineStart[1]];
+    const pointVector = [playerY - lineStart[0], playerZ - lineStart[1]];
 
     const lenSq = lineVector[0] * lineVector[0] + lineVector[1] * lineVector[1];
     const dot = pointVector[0] * lineVector[0] + pointVector[1] * lineVector[1];
@@ -24,7 +26,7 @@ function clampToEdge(lineStart, lineEnd) {
 }
 
 // Handles collisions/clipping
-function resolveCollision(closestX, closestY, closestZ, isWedge) {
+function resolveCollision(closestX, closestY, closestZ, platform) {
     const deltaX = player.position[0] - closestX;
     const deltaY = player.position[1] - closestY;
     const deltaZ = player.position[2] - closestZ;
@@ -51,16 +53,31 @@ function resolveCollision(closestX, closestY, closestZ, isWedge) {
         player.velocity[0] -= dot * normalDirs[0];
         player.velocity[1] -= dot * normalDirs[1];
 
-        // Sliding on wedges
-        const zMultiplier = (isWedge && normalDirs[1] > 0.1 && normalDirs[1] < 0.9) ? 1.5 : 1.0;
+        const zMultiplier = ((platform.shape === "wedge") && normalDirs[1] > 0.1 && normalDirs[1] < 0.9) ? 1.5 : 1.0;
         player.velocity[2] -= dot * normalDirs[2] * zMultiplier;
     }
 
-    if (normalDirs[1] > 0.5) player.isGrounded = true;
+    if (normalDirs[1] > 0.5) {
+        player.isGrounded = true;
+        player.connectedPlatform = platform;
+    }
 }
 
 export function updatePhysics(dt, camera, playerInputs, platforms) {
     player.isGrounded = false;
+
+    // Platform Locking
+    if (player.connectedPlatform) {
+        const pd = player.connectedPlatform.deltaPosition;
+        for (let i = 0; i < 3; i++) {
+            player.platformDelta[i] = pd[i];
+            player.position[i] += pd[i];
+        }
+    } else {
+        player.platformDelta.fill(0);
+    }
+
+    player.connectedPlatform = null;
 
     // TODO: Move all of these static values for physics into one object
     // Gravity
@@ -113,6 +130,47 @@ export function updatePhysics(dt, camera, playerInputs, platforms) {
 
     // Collisions
     for (const platform of platforms) {
+
+        // No collision checking for platforms too far away
+        // This makes the generatePlatforms type 2 (64,000 platforms) run slightly better
+        // however this entire for loop should probably be swapped over to some chunking 
+        // system so this check doesn't need to be done on every platform
+        const cullRange = (platform.cullRange + player.radius) * 2;
+        if (
+            Math.abs(player.position[0] - platform.position[0]) > cullRange ||
+            Math.abs(player.position[1] - platform.position[1]) > cullRange ||
+            Math.abs(player.position[2] - platform.position[2]) > cullRange
+        ) {
+            continue;
+        }
+
+        let playerX = player.position[0];
+        let playerY = player.position[1];
+        let playerZ = player.position[2];
+
+        // Platform rotation handling
+        if (platform.sinX !== 0 || platform.sinY !== 0 || platform.cosX !== 1 || platform.cosY !== 1) {
+            playerX -= platform.position[0];
+            playerY -= platform.position[1];
+            playerZ -= platform.position[2];
+
+            if (platform.sinY !== 0 || platform.cosY !== 1) {
+                const tempX = playerX * platform.cosY - playerZ * platform.sinY;
+                playerZ = playerX * platform.sinY + playerZ * platform.cosY;
+                playerX = tempX;
+            }
+
+            if (platform.sinX !== 0 || platform.cosX !== 1) {
+                const tempY = playerY * platform.cosX + playerZ * platform.sinX;
+                playerZ = -playerY * platform.sinX + playerZ * platform.cosX;
+                playerY = tempY;
+            }
+
+            playerX += platform.position[0];
+            playerY += platform.position[1];
+            playerZ += platform.position[2];
+        }
+
         const minX = platform.position[0] - (platform.scale[0] / 2);
         const maxX = platform.position[0] + (platform.scale[0] / 2);
         const minY = platform.position[1] - (platform.scale[1] / 2);
@@ -123,26 +181,25 @@ export function updatePhysics(dt, camera, playerInputs, platforms) {
         let closestX, closestY, closestZ;
 
         if (platform.shape === "cube") {
-            closestX = Math.max(minX, Math.min(player.position[0], maxX));
-            closestY = Math.max(minY, Math.min(player.position[1], maxY));
-            closestZ = Math.max(minZ, Math.min(player.position[2], maxZ));
+            closestX = Math.max(minX, Math.min(playerX, maxX));
+            closestY = Math.max(minY, Math.min(playerY, maxY));
+            closestZ = Math.max(minZ, Math.min(playerZ, maxZ));
         } else if (platform.shape === "wedge") {
             const rampLength = Math.hypot(platform.scale[1], platform.scale[2]);
             const normalY = platform.scale[2] / rampLength;
             const normalZ = platform.scale[1] / rampLength;
 
-            closestX = Math.max(minX, Math.min(player.position[0], maxX));
-            closestY = player.position[1];
-            closestZ = player.position[2];
+            closestX = Math.max(minX, Math.min(playerX, maxX));
+            closestY = playerY;
+            closestZ = playerZ;
 
-            const distanceToSlope = (player.position[1] - minY) * normalY + (player.position[2] - maxZ) * normalZ;
+            const distanceToSlope = (playerY - minY) * normalY + (playerZ - maxZ) * normalZ;
 
-            if ((distanceToSlope <= 0) && (player.position[1] >= minY) && (player.position[2] >= minZ)) {
-                if (player.position[0] >= minX && player.position[0] <= maxX) {
+            if ((distanceToSlope <= 0) && (playerY >= minY) && (playerZ >= minZ)) {
+                if (playerX >= minX && playerX <= maxX) {
                     const distances = [
-                        -distanceToSlope, player.position[1] - minY,
-                        player.position[2] - minZ, player.position[0] - minX,
-                        maxX - player.position[0]
+                        -distanceToSlope, playerY - minY,
+                        playerZ - minZ, playerX - minX, maxX - playerX
                     ];
                     const minDistance = Math.min(...distances);
                     switch (distances.indexOf(minDistance)) {
@@ -154,13 +211,13 @@ export function updatePhysics(dt, camera, playerInputs, platforms) {
                     }
                 }
             } else {
-                const closestSlopePoint = clampToEdge([maxY, minZ], [minY, maxZ]);
-                const closestBottomPoint = clampToEdge([minY, minZ], [minY, maxZ]);
-                const closestBackPoint = clampToEdge([minY, minZ], [maxY, minZ]);
+                const closestSlopePoint = clampToEdge([maxY, minZ], [minY, maxZ], playerY, playerZ);
+                const closestBottomPoint = clampToEdge([minY, minZ], [minY, maxZ], playerY, playerZ);
+                const closestBackPoint = clampToEdge([minY, minZ], [maxY, minZ], playerY, playerZ);
 
-                const distToSlope = (player.position[1] - closestSlopePoint[0]) ** 2 + (player.position[2] - closestSlopePoint[1]) ** 2;
-                const distToBottom = (player.position[1] - closestBottomPoint[0]) ** 2 + (player.position[2] - closestBottomPoint[1]) ** 2;
-                const distToBack = (player.position[1] - closestBackPoint[0]) ** 2 + (player.position[2] - closestBackPoint[1]) ** 2;
+                const distToSlope = (playerY - closestSlopePoint[0]) ** 2 + (playerZ - closestSlopePoint[1]) ** 2;
+                const distToBottom = (playerY - closestBottomPoint[0]) ** 2 + (playerZ - closestBottomPoint[1]) ** 2;
+                const distToBack = (playerY - closestBackPoint[0]) ** 2 + (playerZ - closestBackPoint[1]) ** 2;
 
                 let bestPoint = distToSlope < distToBottom ? closestSlopePoint : closestBottomPoint;
                 let bestDist = distToSlope < distToBottom ? distToSlope : distToBottom;
@@ -170,7 +227,30 @@ export function updatePhysics(dt, camera, playerInputs, platforms) {
                 closestZ = bestPoint[1];
             }
         }
-        resolveCollision(closestX, closestY, closestZ, (platform.shape === "wedge"));
+
+        // Undo platform rotation
+        if (platform.sinX !== 0 || platform.sinY !== 0 || platform.cosX !== 1 || platform.cosY !== 1) {
+            closestX -= platform.position[0];
+            closestY -= platform.position[1];
+            closestZ -= platform.position[2];
+
+            if (platform.sinX !== 0 || platform.cosX !== 1) {
+                const tempY = closestY * platform.cosX - closestZ * platform.sinX;
+                closestZ = closestY * platform.sinX + closestZ * platform.cosX;
+                closestY = tempY;
+            }
+            if (platform.sinY !== 0 || platform.cosY !== 1) {
+                const tempX = closestX * platform.cosY + closestZ * platform.sinY;
+                closestZ = -closestX * platform.sinY + closestZ * platform.cosY;
+                closestX = tempX;
+            }
+
+            closestX += platform.position[0];
+            closestY += platform.position[1];
+            closestZ += platform.position[2];
+        }
+
+        resolveCollision(closestX, closestY, closestZ, platform);
     }
 
     // Jumping
@@ -179,7 +259,7 @@ export function updatePhysics(dt, camera, playerInputs, platforms) {
         player.isGrounded = false;
     }
 
-     // Check to reset position if you have fallen into the void
+    // Check to reset position if you have fallen into the void
     if (player.position[1] < -100.0) {
         player.position = [0, 5, 0];
         player.velocity = [0, 0, 0];

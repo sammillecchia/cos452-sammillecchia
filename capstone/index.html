@@ -121,7 +121,7 @@
 
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
 
-      gl.bindVertexArray(null); 
+      gl.bindVertexArray(null);
       return vao;
     }
 
@@ -148,7 +148,7 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
 
-    
+
     //Setup buffers for marble
     const marbleIndiceBuffer = createBuffer(calculatedIndices, gl.ARRAY_BUFFER);
     const marbleFaceBuffer = createBuffer(calculatedFaces, gl.ELEMENT_ARRAY_BUFFER);
@@ -172,7 +172,7 @@
     for (const platform of levelPlatforms) {
       const vertexBuffer = platform.shape === "cube" ? cubeVerticeBuffer : wedgeVerticeBuffer;
       const indiceBuffer = platform.shape === "cube" ? cubeIndiceBuffer : wedgeIndiceBuffer;
-      
+
       platform.vao = createVAO(vertexBuffer, platform.uvBuffer, indiceBuffer);
     }
 
@@ -187,26 +187,47 @@
     let V = translation(0, 0, -3);
     let VP = multiply(P, V);
 
+
     // TODO: Add camera movement controlled with arrow keys
-    window.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      dragging = true; lastX = e.clientX; lastY = e.clientY;
-      canvas.setPointerCapture(e.pointerId);
-    });
+    const LOCK_CAMERA = false;
+
+    if (LOCK_CAMERA) {
+      canvas.addEventListener("click", () => {
+        canvas.requestPointerLock();
+      });
+
+      window.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+      });
+
+      window.addEventListener("mousemove", (e) => {
+        if (document.pointerLockElement === canvas) {
+          playerInputs.camera.mouseX += e.movementX;
+          playerInputs.camera.mouseY -= e.movementY;
+        }
+      });
+    } else {
+      window.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        dragging = true; lastX = e.clientX; lastY = e.clientY;
+        canvas.setPointerCapture(e.pointerId);
+      });
+
+      window.addEventListener("pointermove", (e) => {
+        if (!dragging) return;
+        playerInputs.camera.mouseX += e.clientX - lastX;
+        playerInputs.camera.mouseY -= e.clientY - lastY;
+        lastX = e.clientX;
+        lastY = e.clientY;
+      });
+
+      window.addEventListener("pointerup", () => { dragging = false; });
+    }
 
     window.addEventListener("contextmenu", (e) => {
       e.preventDefault();
     });
 
-    window.addEventListener("pointermove", (e) => {
-      if (!dragging) return;
-      playerInputs.camera.mouseX += e.clientX - lastX;
-      playerInputs.camera.mouseY -= e.clientY - lastY;
-      lastX = e.clientX;
-      lastY = e.clientY;
-    });
-
-    window.addEventListener("pointerup", () => { dragging = false; });
 
     // Event listeners for movement
     window.addEventListener("keydown", (e) => {
@@ -251,11 +272,16 @@
       let dt = last ? (t - last) / 1000 : 0.016;
       last = t;
 
+
       // Bounding dt to at most 0.1 to prevent lag spikes and tabbing out having unitended
       // behaviour on gameplay. Some examples of this are: Having incredibly high gravity 
       // applied, having incredibly high acceleration applied, friction not stopping, just
       // clipping through the floor into the endless void, you get the idea.
-      if (dt > 0.1) dt = 0.1;
+      if (dt > 0.1) dt = 0.05;
+
+      for (const p of levelPlatforms) {
+        p.update(t / 1000); // Pass in the time in seconds
+      }
 
       // Do physics
       updatePhysics(dt, mainCamera, playerInputs, levelPlatforms);
@@ -290,7 +316,7 @@
 
         const platformMVP = multiply(VP, platform.getMatrix());
         gl.uniformMatrix4fv(uMVP, false, platformMVP);
-        
+
         const indexCount = platform.shape === "cube" ? 36 : 24;
         gl.drawElements(gl.TRIANGLES, indexCount, gl.UNSIGNED_SHORT, 0);
       }
@@ -299,25 +325,24 @@
       gl.bindVertexArray(marbleVAO);
 
       // Calculate distance moved
-      const dx = player.position[0] - player.lastPosition[0];
-      const dz = player.position[2] - player.lastPosition[2];
+      const dx = (player.position[0] - player.lastPosition[0]) - player.platformDelta[0];
+      const dz = (player.position[2] - player.lastPosition[2]) - player.platformDelta[2];
       const distance = Math.hypot(dx, dz);
 
       // Calculate axis-angle rotation
       if (distance > 0.0001) {
-        const axis = [dz, 0, -dx]; 
-        const angle = distance / player.radius; 
+        const axis = [dz, 0, -dx];
+        const angle = distance / player.radius;
         axisRotation(angle, axis, dRotation);
         marbleRotation = multiply(dRotation, marbleRotation);
       }
-      
+
 
       player.lastPosition = [...player.position];
 
-      //
       const T = translation(player.position[0], player.position[1], player.position[2]);
-      const M = multiply(T, marbleRotation); 
-      
+      const M = multiply(T, marbleRotation);
+
       const mvp = multiply(VP, M);
       gl.uniformMatrix4fv(uMVP, false, mvp);
       gl.drawElements(gl.TRIANGLES, calculatedFaces.length, gl.UNSIGNED_SHORT, 0);
