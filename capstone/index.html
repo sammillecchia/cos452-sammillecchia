@@ -22,25 +22,24 @@
 <body>
   <canvas id="gl-canvas"></canvas>
   <script type="module">
+    import { gameState } from './gameState.js'
     import { Camera } from './camera.js'
     import { calculatedFaces, calculatedIndices } from './icosphere.js';
     import { lookAt, inverse, perspective, translation, multiply, identity, axisRotation } from './math.js';
     import { Platform, levelPlatforms, wedgeVertices, wedgeIndices, cubeVertices, cubeIndices } from './platform.js';
     import { player, updatePhysics } from './physics.js';
 
-    let renderDistance = 1000;
-
-    //TODO: Refactor these into playerInputs
-    let dragging = false, lastX = 0, lastY = 0;
-
     let playerInputs = {
       camera: {
+        dragging: false,
+        lastX: 0,
+        lastY: 0,
         mouseX: 0,
         mouseY: 0,
-        keyPosX: 0,
-        keyNegX: 0,
-        keyPosY: 0,
-        keyNegY: 0
+        keyUp: 0,
+        keyDown: 0,
+        keyLeft: 0,
+        keyRight: 0
       },
       movement: {
         keyForward: 0,
@@ -167,7 +166,6 @@
     }
 
     // https://webgl2fundamentals.org/webgl/lessons/webgl-attributes.html
-
     // Setup VAOs for platforms
     for (const platform of levelPlatforms) {
       const vertexBuffer = platform.shape === "cube" ? cubeVerticeBuffer : wedgeVerticeBuffer;
@@ -183,12 +181,10 @@
     gl.enable(gl.CULL_FACE);
 
     const aspect = canvas.width / canvas.height;
-    let P = perspective(93 * Math.PI / 180, aspect, 0.1, renderDistance);
+    let P = perspective(93 * Math.PI / 180, aspect, 0.1, gameState.settings.renderDistance);
     let V = translation(0, 0, -3);
     let VP = multiply(P, V);
 
-
-    // TODO: Add camera movement controlled with arrow keys
     const LOCK_CAMERA = false;
 
     if (LOCK_CAMERA) {
@@ -209,47 +205,61 @@
     } else {
       window.addEventListener("pointerdown", (e) => {
         e.preventDefault();
-        dragging = true; lastX = e.clientX; lastY = e.clientY;
+        playerInputs.camera.dragging = true; 
+        playerInputs.camera.lastX = e.clientX; 
+        playerInputs.camera.lastY = e.clientY;
         canvas.setPointerCapture(e.pointerId);
       });
 
       window.addEventListener("pointermove", (e) => {
-        if (!dragging) return;
-        playerInputs.camera.mouseX += e.clientX - lastX;
-        playerInputs.camera.mouseY -= e.clientY - lastY;
-        lastX = e.clientX;
-        lastY = e.clientY;
+        if (!playerInputs.camera.dragging) return;
+        playerInputs.camera.mouseX += e.clientX - playerInputs.camera.lastX;
+        playerInputs.camera.mouseY -= e.clientY - playerInputs.camera.lastY;
+        playerInputs.camera.lastX = e.clientX;
+        playerInputs.camera.lastY = e.clientY;
       });
 
-      window.addEventListener("pointerup", () => { dragging = false; });
+      window.addEventListener("pointerup", () => { playerInputs.camera.dragging = false; });
     }
 
     window.addEventListener("contextmenu", (e) => {
       e.preventDefault();
     });
 
-
-    // Event listeners for movement
+    // Event listeners for WASD movement and Arrow Keys Camera
     window.addEventListener("keydown", (e) => {
-      const key = e.key.toLowerCase();
-      if (["w", "a", "s", "d"].includes(key)) {
-        e.preventDefault();
-      }
-      if (key === "w") playerInputs.movement.keyForward = 1;
-      if (key === "s") playerInputs.movement.keyBack = 1;
-      if (key === "a") playerInputs.movement.keyLeft = 1;
-      if (key === "d") playerInputs.movement.keyRight = 1;
-      if (key === " ") playerInputs.movement.keyJump = 1;
-    });
+          if ([" ", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+              e.preventDefault();
+          }
 
-    window.addEventListener("keyup", (e) => {
-      const key = e.key.toLowerCase();
-      if (key === "w") playerInputs.movement.keyForward = 0;
-      if (key === "s") playerInputs.movement.keyBack = 0;
-      if (key === "a") playerInputs.movement.keyLeft = 0;
-      if (key === "d") playerInputs.movement.keyRight = 0;
-      if (key === " ") playerInputs.movement.keyJump = 0;
-    });
+          const key = e.key.toLowerCase();
+
+          if (key === "w") playerInputs.movement.keyForward = 1;
+          if (key === "s") playerInputs.movement.keyBack = 1;
+          if (key === "a") playerInputs.movement.keyLeft = 1;
+          if (key === "d") playerInputs.movement.keyRight = 1;
+          if (key === " ") playerInputs.movement.keyJump = 1;
+
+          if (e.key === "ArrowUp") playerInputs.camera.keyUp = 1;
+          if (e.key === "ArrowDown") playerInputs.camera.keyDown = 1;
+          if (e.key === "ArrowLeft") playerInputs.camera.keyLeft = 1;
+          if (e.key === "ArrowRight") playerInputs.camera.keyRight = 1;
+      });
+
+      window.addEventListener("keyup", (e) => {
+          const key = e.key.toLowerCase();
+          
+          if (key === "w") playerInputs.movement.keyForward = 0;
+          if (key === "s") playerInputs.movement.keyBack = 0;
+          if (key === "a") playerInputs.movement.keyLeft = 0;
+          if (key === "d") playerInputs.movement.keyRight = 0;
+          if (key === " ") playerInputs.movement.keyJump = 0;
+
+          if (e.key === "ArrowUp") playerInputs.camera.keyUp = 0;
+          if (e.key === "ArrowDown") playerInputs.camera.keyDown = 0;
+          if (e.key === "ArrowLeft") playerInputs.camera.keyLeft = 0;
+          if (e.key === "ArrowRight") playerInputs.camera.keyRight = 0;
+      });
 
     // Fixes movement keys becoming stuck when tabbing out
     window.addEventListener("blur", () => {
@@ -258,7 +268,7 @@
       playerInputs.movement.keyLeft = 0;
       playerInputs.movement.keyRight = 0;
       playerInputs.movement.keyJump = 0;
-      dragging = false;
+      playerInputs.camera.dragging = false;
     });
 
     const mainCamera = new Camera(15);
@@ -272,15 +282,20 @@
       let dt = last ? (t - last) / 1000 : 0.016;
       last = t;
 
-
       // Bounding dt to at most 0.1 to prevent lag spikes and tabbing out having unitended
       // behaviour on gameplay. Some examples of this are: Having incredibly high gravity 
       // applied, having incredibly high acceleration applied, friction not stopping, just
       // clipping through the floor into the endless void, you get the idea.
       if (dt > 0.1) dt = 0.05;
 
+      const turnSpeed = 1000 * dt;
+      if (playerInputs.camera.keyUp) playerInputs.camera.mouseY -= turnSpeed;
+      if (playerInputs.camera.keyDown) playerInputs.camera.mouseY += turnSpeed;
+      if (playerInputs.camera.keyLeft) playerInputs.camera.mouseX += turnSpeed;
+      if (playerInputs.camera.keyRight) playerInputs.camera.mouseX -= turnSpeed;
+
       for (const p of levelPlatforms) {
-        p.update(t / 1000); // Pass in the time in seconds
+        p.update(t / 1000); 
       }
 
       // Do physics
@@ -298,7 +313,7 @@
         canvas.width = w;
         canvas.height = h;
         const newAspect = canvas.width / canvas.height;
-        P = perspective(50 * Math.PI / 180, newAspect, 0.1, renderDistance);
+        P = perspective(50 * Math.PI / 180, newAspect, 0.1, gameState.settings.renderDistance);
       }
 
       gl.viewport(0, 0, canvas.width, canvas.height);

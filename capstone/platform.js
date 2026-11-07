@@ -1,5 +1,4 @@
 //File for handling platform objects, the blocks that make up the world
-
 import { translation, scaling, multiply, rotationX, rotationY, normalize } from "./math.js";
 
 // Cube
@@ -35,7 +34,6 @@ export const wedgeIndices = new Uint16Array([
   12, 13, 14,          // left 
   15, 16, 17           // right 
 ]);
-
 
 // Class for creating platform objects that are placed in the world
 export class Platform {
@@ -142,9 +140,11 @@ function generatePlatforms(mode = 0) {
         const platformHeight = 1;
         const platformYOffset = platformHeight / 2 - 0.5; 
         
-        let rand = Math.floor(Math.random() * 20);
+        let rand = Math.floor(Math.random() * 40);
+        let rand2 =  Math.floor(Math.random() * 20)
+        let rand3 = Math.floor(Math.random() * 3) + 1;
 
-        levelPlatforms.push(new Platform(true, rand, platformYOffset + i * 5, i * -20, 10, platformHeight, 10, "cube"));
+        levelPlatforms.push(new Platform(true, rand - 20, platformYOffset + i * 5, i * -20, 10, platformHeight, 10, "cube", 0, 0, rand3, rand2, [1, 0, 0]));
       }
       break;
     }
@@ -160,13 +160,11 @@ function generatePlatforms(mode = 0) {
         }
       }
       break;
-    }
+    } 
   }
 }
 
-
-
-generatePlatforms(1);
+generatePlatforms(0);
 
 //TODO: Implement adding new platforms in real-time
 // setTimeout(() => {

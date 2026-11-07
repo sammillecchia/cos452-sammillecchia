@@ -6,7 +6,13 @@ export const player = {
     radius: 1.0,
     isGrounded: false,
     connectedPlatform: null,
-    platformDelta: [0, 0, 0]
+    lastConnectedPlatform: null,
+    platformDelta: [0, 0, 0],
+    gravity: -60.0,
+    acceleration: 70.0,
+    friction: 8.0,
+    jumpHeight: 30.0,
+    voidHeight: -100.0
 };
 
 // Helper function for clamping 
@@ -79,10 +85,8 @@ export function updatePhysics(dt, camera, playerInputs, platforms) {
 
     player.connectedPlatform = null;
 
-    // TODO: Move all of these static values for physics into one object
     // Gravity
-    const gravity = -60.0;
-    player.velocity[1] += gravity * dt;
+    player.velocity[1] += player.gravity * dt;
 
     // WASD movement (relative to camera)
     const forwardX = -Math.sin(camera.azimuth);
@@ -110,17 +114,15 @@ export function updatePhysics(dt, camera, playerInputs, platforms) {
         }
     }
 
-    const acceleration = 70.0; //TODO
-    player.velocity[0] += moveX * acceleration * dt;
-    player.velocity[2] += moveZ * acceleration * dt;
+    player.velocity[0] += moveX * player.acceleration * dt;
+    player.velocity[2] += moveZ * player.acceleration * dt;
 
-    const friction = 8.0; //TODO
     if (player.isGrounded) {
-        player.velocity[0] -= player.velocity[0] * friction * dt;
-        player.velocity[2] -= player.velocity[2] * friction * dt;
+        player.velocity[0] -= player.velocity[0] * player.friction * dt;
+        player.velocity[2] -= player.velocity[2] * player.friction * dt;
     } else {
-        player.velocity[0] -= player.velocity[0] * (friction * 0.2) * dt;
-        player.velocity[2] -= player.velocity[2] * (friction * 0.2) * dt;
+        player.velocity[0] -= player.velocity[0] * (player.friction * 0.2) * dt;
+        player.velocity[2] -= player.velocity[2] * (player.friction * 0.2) * dt;
     }
 
     // Movment
@@ -255,12 +257,21 @@ export function updatePhysics(dt, camera, playerInputs, platforms) {
 
     // Jumping
     if (player.isGrounded && playerInputs.movement.keyJump) {
-        player.velocity[1] = 30; // JUMP HEIGHT
+        player.velocity[1] = player.jumpHeight;
         player.isGrounded = false;
+        player.connectedPlatform = null; 
     }
 
+    if (player.lastConnectedPlatform && !player.connectedPlatform) { 
+        player.velocity[0] += player.lastConnectedPlatform.deltaPosition[0] / dt;
+        player.velocity[1] += player.lastConnectedPlatform.deltaPosition[1] / dt;
+        player.velocity[2] += player.lastConnectedPlatform.deltaPosition[2] / dt;
+    }
+
+    player.lastConnectedPlatform = player.connectedPlatform;
+
     // Check to reset position if you have fallen into the void
-    if (player.position[1] < -100.0) {
+    if (player.position[1] < player.voidHeight) {
         player.position = [0, 5, 0];
         player.velocity = [0, 0, 0];
     }
