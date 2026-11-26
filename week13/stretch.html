@@ -102,6 +102,7 @@
 
         // ---- Column-major mat4 helpers ----
         function translation(tx, ty, tz) { return new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tx, ty, tz, 1]); }
+        function scaling(sx, sy) { return new Float32Array([sx,0,0,0, 0,sy,0,0, 0,0,1,0, 0,0,0,1]); }
         function rotationX(a) { const c = Math.cos(a), s = Math.sin(a); return new Float32Array([1, 0, 0, 0, 0, c, s, 0, 0, -s, c, 0, 0, 0, 0, 1]); }
         function rotationY(a) { const c = Math.cos(a), s = Math.sin(a); return new Float32Array([c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1]); }
         function perspective(fovy, aspect, near, far) { const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far); return new Float32Array([f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, (far + near) * nf, -1, 0, 0, 2 * far * near * nf, 0]); }
@@ -158,6 +159,7 @@
         const keys = {};
         let dragging = false, lastX = 0, lastY = 0;
         let autoSpin = true;
+        let zoom = 1;
 
         window.addEventListener("keydown", (e) => {
             if (e.key === " ") {
@@ -184,6 +186,12 @@
         });
         canvas.addEventListener("pointerup", () => { dragging = false; });
 
+        canvas.addEventListener("wheel", (e) => {
+            e.preventDefault();
+            zoom -= e.deltaY * 0.001;
+            zoom = Math.min(Math.max(0.2, zoom), 5);
+        })
+
         let last = 0;
         function frame(t) {
             const dt = last ? (t - last) / 1000 : 0;
@@ -201,10 +209,17 @@
             if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
             gl.viewport(0, 0, canvas.width, canvas.height);
 
+            // const model = multiply(rotationY(angleY), rotationX(angleX));
+            // const aspect = canvas.width / canvas.height;
+            // const P = perspective(50 * Math.PI / 180, aspect, 0.1, 100);
+            // const V = scaling(zoom, zoom);
+            // const M = translation(0, 0, -3);
+            // let mvp = multiply(multiply(P, V), M);
+
             const model = multiply(rotationY(angleY), rotationX(angleX));
             const aspect = canvas.width / canvas.height;
             const P = perspective(50 * Math.PI / 180, aspect, 0.1, 100);
-            const Vm = translation(0, 0, -3);
+            const Vm = multiply(translation(0, 0, -3), scaling(zoom, zoom));
             const mvp = multiply(multiply(P, Vm), model);
 
             gl.useProgram(program);
