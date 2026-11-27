@@ -1,12 +1,13 @@
-# cos452-sammillecchia
-Repository for USM's COS452 - Computer Graphics
+#<div align="center">
 
-**Repo Link:**  
-[github.com/sammillecchia/cos452-sammillecchia](https://github.com/sammillecchia/cos452-sammillecchia)
+# COS 452 — Computer Graphics
+**Repo for University of Southern Maine's Fall 2026 COS452 Computer Graphics Course**
 
-**Pages Link:**  
-[sammillecchia.github.io/cos452-sammillecchia](https://sammillecchia.github.io/cos452-sammillecchia/)
+[View Live Pages](https://sammillecchia.github.io/cos452-sammillecchia/) · [GitHub Repository](https://github.com/sammillecchia/cos452-sammillecchia)
 
+</div>
+
+[
 ## Labs
 
 | Lab | Stretch Goal | Additional |
