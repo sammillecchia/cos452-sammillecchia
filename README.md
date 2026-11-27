@@ -1,4 +1,4 @@
-#<div align="center">
+<div align="center">
 
 # COS 452 — Computer Graphics
 **Repo for University of Southern Maine's Fall 2026 COS452 Computer Graphics Course**
@@ -7,7 +7,6 @@
 
 </div>
 
-[
 ## Labs
 
 | Lab | Stretch Goal | Additional |
